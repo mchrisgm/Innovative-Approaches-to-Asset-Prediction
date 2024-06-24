@@ -30,11 +30,13 @@ jobs:
         ls -a
         echo "-- ./target_repo"
         ls -a ./target_repo
+        echo "-- Removing existing .git, .github, and target_repo folders if they exist"
+        rm -rf ./.git ./.github ./target_repo/src
         echo "-- Copying files to target_repo/src"
-        cp -r `ls -A | grep -v 'target_repo'` ./target_repo/src
+        rsync -av --progress --exclude='.git' --exclude='.github' --exclude='target_repo' ./ ./target_repo/src --delete
         echo "-- Listing files in target_repo/src"
         ls -a ./target_repo/src
         cd target_repo
-        git add --all -- :!.github
+        git add --all
         git commit -m "${COMMIT_MESSAGE}"
         git push origin ${TARGET_BRANCH}
