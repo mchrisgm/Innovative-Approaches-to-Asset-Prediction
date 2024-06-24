@@ -26,9 +26,14 @@ jobs:
         TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
       run: |
         git clone https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git target_repo
+        echo "./"
         ls -a
-        cp -r `ls -A | grep -v 'target_repo'` ./target_repo/src
-        ls -a /target_repo/src
+        echo "./target_repo"
+        ls -a ./target_repo
+        echo ".Copying files to target_repo/src"
+        cp -r `ls -A | grep -v './target_repo'` ./target_repo/src
+        echo "Listing files in target_repo/src"
+        ls -a ./target_repo/src
         cd target_repo
         git add --all -- :!.github
         git commit -m "${COMMIT_MESSAGE}"
