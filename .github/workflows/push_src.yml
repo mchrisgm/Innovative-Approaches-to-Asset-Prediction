@@ -1,0 +1,33 @@
+name: Push source to IRP Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push-pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Setup Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Copy src to IRP repo
+      env:
+        TARGET_REPO: 'ese-msc-2023/irp-ci223'
+        TARGET_BRANCH: 'main'
+        COMMIT_MESSAGE: 'Source code update'
+        TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
+      run: |
+        git clone https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git target_repo
+        cp -a . target_repo/src
+        cd target_repo
+        git add --all -- :!.github
+        git commit -m "${COMMIT_MESSAGE}"
+        git push origin ${TARGET_BRANCH}
