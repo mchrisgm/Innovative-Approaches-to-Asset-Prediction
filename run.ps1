@@ -36,4 +36,4 @@ Write-Color "Running main script..." "Cyan"
 
 # Deactivating the virtual environment
 Write-Color "Deactivating virtual environment..." "Green"
-# Deactivation is not required in script
+&deactivate
