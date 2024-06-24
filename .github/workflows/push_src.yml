@@ -26,7 +26,7 @@ jobs:
         TOKEN: ${{ secrets.TARGET_REPO_TOKEN }}
       run: |
         git clone https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git target_repo
-        cp -a . target_repo/src
+        cp -r !(target_repo) /target_repo/src
         cd target_repo
         git add --all -- :!.github
         git commit -m "${COMMIT_MESSAGE}"
