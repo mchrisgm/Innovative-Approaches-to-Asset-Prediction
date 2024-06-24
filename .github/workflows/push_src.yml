@@ -27,7 +27,7 @@ jobs:
       run: |
         git clone https://x-access-token:${TOKEN}@github.com/${TARGET_REPO}.git target_repo
         ls -a
-        cp -r !(target_repo) /target_repo/src
+        cp -r !(target_repo|.git) ./target_repo/src
         ls -a /target_repo/src
         cd target_repo
         git add --all -- :!.github
