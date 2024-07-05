@@ -1,23 +1,31 @@
 import pandas as pd
 import numpy as np
 
-
 __all__ = ["outcomes"]
 
 
-def outcomes(equity_df: pd.DataFrame, currency_df: pd.DataFrame, bond_df: pd.DataFrame) -> pd.DataFrame:    # noqa
-    # Calculate the percentage change of each dataframe
+def outcomes(equity_df: pd.DataFrame, currency_df: pd.DataFrame, bond_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate the percentage change and movements for equity, currency, and bond data.
+
+    Parameters:
+    equity_df (pd.DataFrame): DataFrame containing equity data with Date and Close columns.
+    currency_df (pd.DataFrame): DataFrame containing currency data with Date and Close columns.
+    bond_df (pd.DataFrame): DataFrame containing bond index data with Date and Index columns.
+
+    Returns:
+    pd.DataFrame: Combined DataFrame with movements calculated for equity, currency, and bond data.
+    """ # noqa
+    # Calculate the percentage change of the 'Close' column for equity and currency data    # noqa
+    # and 'Index' column for bond data
     equity_df["pct"] = equity_df["Close"].pct_change(fill_method=None)
     currency_df["pct"] = currency_df["Close"].pct_change(fill_method=None)
     bond_df["pct"] = bond_df["Index"].pct_change(fill_method=None)
 
-    # Select the Date and pct columns from each dataframe
-    equity_pct = equity_df[["Date", "pct"]] \
-        .rename(columns={"pct": "Equity"})
-    currency_pct = currency_df[["Date", "pct"]] \
-        .rename(columns={"pct": "Currency"})
-    bond_pct = bond_df[["Date", "pct"]] \
-        .rename(columns={"pct": "Bond"})
+    # Select the Date and pct columns from each dataframe and rename the pct columns        # noqa
+    equity_pct = equity_df[["Date", "pct"]].rename(columns={"pct": "Equity"})
+    currency_pct = currency_df[["Date", "pct"]].rename(columns={"pct": "Currency"})         # noqa
+    bond_pct = bond_df[["Date", "pct"]].rename(columns={"pct": "Bond"})
 
     # Combine the "pct" columns of the dataframes, matching the dates using an outer join   # noqa
     combined_df = pd.merge(equity_pct, currency_pct, on="Date", how="outer")
@@ -29,7 +37,7 @@ def outcomes(equity_df: pd.DataFrame, currency_df: pd.DataFrame, bond_df: pd.Dat
     # Drop the NaN values
     combined_df.dropna(inplace=True)
 
-    # Get the cumulative sum of the positives and negatives
+    # Calculate the cumulative sum of positive and negative values for each date            # noqa
     combined_df["Long"] = combined_df[combined_df > 0].sum(axis=1)
     combined_df["Short"] = -combined_df[combined_df < 0].sum(axis=1)
 
@@ -39,23 +47,19 @@ def outcomes(equity_df: pd.DataFrame, currency_df: pd.DataFrame, bond_df: pd.Dat
     combined_df["Bond Movement"] = combined_df["Bond"] / np.where(combined_df["Bond"] > 0, combined_df["Long"], combined_df["Short"])               # noqa
 
     # Drop the columns that are not needed
-    combined_df.drop(
-        columns=["Equity", "Currency", "Bond", "Long", "Short"],
-        inplace=True)
+    combined_df.drop(columns=["Equity", "Currency", "Bond", "Long", "Short"], inplace=True) # noqa
 
     return combined_df
 
 
 if __name__ == "__main__":
-    # Load the data
-    equity_df = pd.read_csv(
-        "data/unprocessed/EQUITY.SP500.2000.2023.csv",
-        parse_dates=["Date"])
-    currency_df = pd.read_csv(
-        "data/unprocessed/CURRENCY.EURUSD.2004.2023.csv",
-        parse_dates=["Date"])
-    bond_df = pd.read_csv(
-        "data/unprocessed/BOND.USTREASURYINDEX.2014.2024.csv",
-        parse_dates=["Date"])
+    # Load the data from CSV files
+    equity_df = pd.read_csv("data/unprocessed/EQUITY.SP500.2000.2023.csv",
+                            parse_dates=["Date"])
+    currency_df = pd.read_csv("data/unprocessed/CURRENCY.EURUSD.2004.2023.csv",
+                              parse_dates=["Date"])
+    bond_df = pd.read_csv("data/unprocessed/BOND.USTREASURYINDEX.2014.2024.csv",
+                          parse_dates=["Date"])
 
+    # Print the first few rows of the outcomes DataFrame
     print(outcomes(equity_df, currency_df, bond_df).head())
