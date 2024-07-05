@@ -4,9 +4,15 @@ __all__ = ['process']
 
 import os
 import logging
+import shutil
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from PIL import Image
+
+from graph import create_image
+from calculator import outcomes
 
 
 class Asset:
@@ -41,13 +47,33 @@ class Asset:
         return f"{self.name} ({len(self.data)} rows)"
 
 
+def lookback_windows(df: pd.DataFrame, lookback=5) -> list[pd.DataFrame]:
+    # Ensure the Date column is the index
+    df.set_index("Date", inplace=True)
+
+    # Create an empty list to store the lookback windows
+    windows = []
+
+    # Iterate through each possible start index for the rolling windows
+    for start in range(len(df) - lookback + 1):
+        end = start + lookback
+        lookback_window = df.iloc[start:end].reset_index()  # Reset the index to have Date as a column
+        windows.append(lookback_window)
+    return windows
+
+
 class DataComposer:
     equity_asset = Asset()
     currency_asset = Asset()
     bond_asset = Asset()
+    lookback = 5
+    image_size = 64
+    n_images = 0
+    save_png = False
 
     def __init__(self, directory="./data/unprocessed",
                  save_directory="./data/processed",
+                 lookback=5,
                  filenames: dict[str, str] = {"equity": "",
                                               "currency": "",
                                               "bond": ""}):
@@ -56,6 +82,7 @@ class DataComposer:
         self.equity_filename = filenames.get("equity", "")
         self.currency_filename = filenames.get("currency", "")
         self.bond_filename = filenames.get("bond", "")
+        self.lookback = self.lookback if lookback == 5 else lookback
 
         if not self.file_exists(directory, self.equity_filename):
             logging.error(f"File not found: {self.equity_filename}")
@@ -112,7 +139,47 @@ class DataComposer:
 
     def save(self):
         output_filename = f"{self.save_directory}/{self.equity_asset.name}.{self.currency_asset.name}.{self.bond_asset.name}.{self.effective_start_year.year}.{self.effective_end_year.year}"
+        output_path = Path(output_filename)
+        if output_path.exists() and output_path.is_dir():
+            shutil.rmtree(output_path)
         Path(output_filename).mkdir(parents=True, exist_ok=True)
+        outcomes_df = outcomes(self.equity_asset.get(),
+                               self.currency_asset.get(),
+                               self.bond_asset.get())
+
+        # Remove the first self.lookback rows of the outcomes_df
+        outcomes_df = outcomes_df.iloc[self.lookback-1:]
+
+        if self.n_images > 0:
+            outcomes_df = outcomes_df.sample(n=self.n_images)
+
+        # numpy array = create_image(equity_df_with_lookback, currency_df_with_lookback, bond_df_with_lookback)
+        equity_lookback = lookback_windows(self.equity_asset.get(), self.lookback)
+        currency_lookback = lookback_windows(self.currency_asset.get(), self.lookback)
+        bond_lookback = lookback_windows(self.bond_asset.get(), self.lookback)
+
+        final_df = pd.DataFrame({
+            "Image": pd.Series(dtype='object'),
+            "Equity": pd.Series(dtype='float'),
+            "Currency": pd.Series(dtype='float'),
+            "Bond": pd.Series(dtype='float')
+        })
+        progress = 1
+        for equity, currency, bond, outcome in zip(equity_lookback, currency_lookback, bond_lookback, outcomes_df.iterrows()):
+            print(f"{progress / len(outcomes_df) * 100:.2f}%  -> {progress} images created")
+            outcome_image = create_image(equity, currency, bond, width=self.image_size, height=self.image_size)
+            new_row = {
+                "Image": outcome_image,
+                "Equity": outcome[1]["Equity Movement"],
+                "Currency": outcome[1]["Currency Movement"],
+                "Bond": outcome[1]["Bond Movement"]
+            }
+            final_df = pd.concat([final_df, pd.DataFrame([new_row])], ignore_index=True)
+            if self.save_png:
+                Image.fromarray(outcome_image).save(f"{output_filename}/{progress}.png")
+            progress += 1
+        # final_df.to_pickle(f"{output_filename}/data.pkl")
+        final_df.to_numpy().dump(f"{output_filename}/data.npy")
 
 
 def process(unprocessed_folder: str = "./data/unprocessed",
@@ -168,3 +235,5 @@ def process(unprocessed_folder: str = "./data/unprocessed",
 
 if __name__ == "__main__":
     process()
+    data = np.load("./data/processed/SP500.EURUSD.USTREASURYINDEX.2014.2023/data.npy", allow_pickle=True)
+    print(data)
