@@ -1,5 +1,13 @@
-numpy
+numpy<2.0.0
 pandas
+pandas-stubs
 plotly
 Pillow
+types-Pillow
 kaleido
+livelossplot
+ipykernel
+torch
+torchvision
+IPython
+matplotlib

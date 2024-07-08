@@ -70,7 +70,7 @@ class Asset:
         """
         return self.data["Date"].max()
 
-    def crop(self, start_year: str, end_year: str) -> None:
+    def crop(self, start_year: str, end_year: str, date_index=None) -> None:
         """
         Crop the asset data to the specified date range.
 
@@ -81,6 +81,17 @@ class Asset:
         start_date = pd.to_datetime(start_year)
         end_date = pd.to_datetime(end_year)
         self.data = self.data[(self.data["Date"] >= start_date) & (self.data["Date"] <= end_date)]  # noqa
+
+        # Only keep the dates that are in the date_index
+        if date_index is not None:
+            self.data = self.data[self.data["Date"].isin(date_index)]
+            #Fill the dates missing from self.data but exist in date_index
+            missing_dates = date_index[~date_index.isin(self.data["Date"])]
+            missing_data = pd.DataFrame({"Date": missing_dates})
+            self.data = pd.concat([self.data, missing_data], ignore_index=True)
+            self.data = self.data.sort_values("Date")
+
+        self.data = self.data.set_index("Date").reset_index()
 
     def __str__(self) -> str:
         return f"{self.name} ({len(self.data)} rows)"
@@ -97,7 +108,6 @@ def lookback_windows(df: pd.DataFrame, lookback=5) -> list[pd.DataFrame]:
     Returns:
     list[pd.DataFrame]: List of DataFrames, each representing a lookback window with a Date column.
     """ # noqa
-    df.set_index("Date", inplace=True)
     windows = []
     for start in range(len(df) - lookback + 1):
         end = start + lookback
@@ -128,7 +138,7 @@ class DataComposer:
     currency_asset = Asset()
     bond_asset = Asset()
     lookback = 5
-    image_size = 64
+    image_size = 128
     n_images = 0
     save_png = False
 
@@ -201,8 +211,8 @@ class DataComposer:
         self.effective_end_year = min(self.equity_asset.get_end_year(), self.currency_asset.get_end_year(), self.bond_asset.get_end_year())             # noqa
 
         self.equity_asset.crop(self.effective_start_year, self.effective_end_year)      # noqa
-        self.currency_asset.crop(self.effective_start_year, self.effective_end_year)    # noqa
-        self.bond_asset.crop(self.effective_start_year, self.effective_end_year)        # noqa
+        self.currency_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"])    # noqa
+        self.bond_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"])        # noqa
 
     def save(self):
         """
@@ -224,11 +234,11 @@ class DataComposer:
         if self.n_images > 0:
             outcomes_df = outcomes_df.sample(n=self.n_images)
 
-        equity_lookback = lookback_windows(self.equity_asset.get(),
+        equity_lookback = lookback_windows(self.equity_asset.get(),  # noqa
                                            self.lookback)
-        currency_lookback = lookback_windows(self.currency_asset.get(),
+        currency_lookback = lookback_windows(self.currency_asset.get(),  # noqa
                                              self.lookback)
-        bond_lookback = lookback_windows(self.bond_asset.get(),
+        bond_lookback = lookback_windows(self.bond_asset.get(),  # noqa
                                          self.lookback)
 
         final_df = pd.DataFrame({
@@ -252,7 +262,7 @@ class DataComposer:
                 Image.fromarray(outcome_image).save(f"{output_filename}/{progress}.png")    # noqa
             progress += 1
 
-        final_df.to_numpy().dump(f"{output_filename}/data.npy")
+        np.save(f"{output_filename}/data.npy", final_df.to_numpy(), allow_pickle=True)     # noqa
 
 
 def process(unprocessed_folder: str = "./data/unprocessed",
@@ -312,3 +322,5 @@ if __name__ == "__main__":
     process()
     data = np.load("./data/processed/SP500.EURUSD.USTREASURYINDEX.2014.2023/data.npy", allow_pickle=True)   # noqa
     print(data)
+    print(data[0][0].shape)
+    Image.fromarray(data[0][0]).resize((512, 512)).show()
