@@ -1,5 +1,7 @@
 __all__ = ['process']
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from multiprocessing import Pool, cpu_count
 import os
 import logging
 import shutil
@@ -11,6 +13,12 @@ from PIL import Image
 
 from graph import create_image
 from calculator import outcomes
+
+
+IMAGE_SIZE = 128
+LOOKBACK_PERIOD = 20
+SAVE_PGNS = False
+NO_IMAGES_TO_GENERATE = 0
 
 
 class Asset:
@@ -137,10 +145,10 @@ class DataComposer:
     equity_asset = Asset()
     currency_asset = Asset()
     bond_asset = Asset()
-    lookback = 5
-    image_size = 128
-    n_images = 0
-    save_png = False
+    lookback = LOOKBACK_PERIOD
+    image_size = IMAGE_SIZE
+    n_images = NO_IMAGES_TO_GENERATE
+    save_png = SAVE_PGNS
 
     def __init__(self, directory="./data/unprocessed",
                  save_directory="./data/processed",
@@ -219,10 +227,6 @@ class DataComposer:
         Process the data and save the results, including images and movement data.
         """ # noqa
         output_filename = f"{self.save_directory}/{self.equity_asset.name}.{self.currency_asset.name}.{self.bond_asset.name}.{self.effective_start_year.year}.{self.effective_end_year.year}"   # noqa
-        output_path = Path(output_filename)
-        if output_path.exists() and output_path.is_dir():
-            shutil.rmtree(output_path)
-        Path(output_filename).mkdir(parents=True, exist_ok=True)
 
         outcomes_df = outcomes(self.equity_asset.get(),
                                self.currency_asset.get(),
@@ -247,22 +251,46 @@ class DataComposer:
             "Currency": pd.Series(dtype='float'),
             "Bond": pd.Series(dtype='float')
         })
-        progress = 1
-        for equity, currency, bond, outcome in zip(equity_lookback, currency_lookback, bond_lookback, outcomes_df.iterrows()):      # noqa
-            print(f"{progress / len(outcomes_df) * 100:.2f}%  -> {progress} images created")                                        # noqa
-            outcome_image = create_image(equity, currency, bond, width=self.image_size, height=self.image_size)                     # noqa
+
+        def process_row(equity, currency, bond, outcome, idx, save_png, image_size, output_filename):
+            print(f"{idx / len(outcomes_df) * 100:.2f}%  -> {idx} images created")
+            outcome_image = create_image(equity, currency, bond, width=image_size, height=image_size)
             new_row = {
                 "Image": outcome_image,
-                "Equity": outcome[1]["Equity Movement"],
-                "Currency": outcome[1]["Currency Movement"],
-                "Bond": outcome[1]["Bond Movement"]
+                "Equity": outcome["Equity Movement"],
+                "Currency": outcome["Currency Movement"],
+                "Bond": outcome["Bond Movement"]
             }
-            final_df = pd.concat([final_df, pd.DataFrame([new_row])], ignore_index=True)    # noqa
-            if self.save_png:
-                Image.fromarray(outcome_image).save(f"{output_filename}/{progress}.png")    # noqa
-            progress += 1
+            if save_png:
+                Image.fromarray(outcome_image).save(f"{output_filename}/{idx}.png")
+            return new_row
 
-        np.save(f"{output_filename}/data.npy", final_df.to_numpy(), allow_pickle=True)     # noqa
+        args = [(equity, currency, bond, outcome[1], idx, self.save_png, self.image_size, output_filename) 
+                for idx, (equity, currency, bond, outcome) in enumerate(zip(equity_lookback, currency_lookback, bond_lookback, outcomes_df.iterrows()), 1)]
+
+        rows = []
+
+        # with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
+        #     futures = {executor.submit(process_row, *arg): arg for arg in args}
+        #     for future in as_completed(futures):
+        #         try:
+        #             row = future.result()
+        #             rows.append(row)
+        #         except Exception as e:
+        #             print(f"Error processing row: {e}")
+
+        for arg in args:
+            row = process_row(*arg)
+            rows.append(row)
+
+        final_df = pd.DataFrame(rows)
+
+        output_path = Path(output_filename)
+        if output_path.exists() and output_path.is_dir():
+            shutil.rmtree(output_path)
+        Path(output_filename).mkdir(parents=True, exist_ok=True)
+
+        np.save(f"{output_filename}/data.npy", final_df.to_numpy(), allow_pickle=True)
 
 
 def process(unprocessed_folder: str = "./data/unprocessed",

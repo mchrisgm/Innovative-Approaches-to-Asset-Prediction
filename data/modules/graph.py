@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 __all__ = ["create_image"]
 
 
-def create_candlestick(df) -> go.Candlestick:
+def create_candlestick(df) -> go.Ohlc:
     """
     Creates a candlestick chart for the given DataFrame.
 
@@ -18,17 +18,25 @@ def create_candlestick(df) -> go.Candlestick:
     df (pd.DataFrame): DataFrame containing the stock data with columns Date, Open, High, Low, Close.
 
     Returns:
-    go.Candlestick: Plotly Candlestick object.
+    go.Ohlc: Plotly Candlestick object.
     """ # noqa
     # Create the candlestick chart
-    fig = go.Candlestick(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"])  # noqa
+    fig = go.Ohlc(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"])  # noqa
 
-    # Set the color for increasing (green) and decreasing (red) candles
-    fig.increasing.fillcolor = '#00FF00'
-    fig.decreasing.fillcolor = '#FF0000'
-    fig.increasing.line.color = '#00FF00'
-    fig.decreasing.line.color = '#FF0000'
+    try:
+        # Set the color for increasing (green) and decreasing (red) candles
+        fig.increasing.fillcolor = '#00FF00'
+        fig.decreasing.fillcolor = '#FF0000'
+        fig.increasing.line.color = '#00FF00'
+        fig.decreasing.line.color = '#FF0000'
+    except ValueError:
+        # Set the color for increasing (green) and decreasing (red) candles
+        # fig.increasing.line.color = '#00FF00'
+        # fig.decreasing.line.color = '#FF0000'
 
+        # Set the color for increasing and decreasing candles to blue (converted to white in grayscale image)
+        fig.increasing.line.color = '#0000FF'
+        fig.decreasing.line.color = '#0000FF'
     return fig
 
 
@@ -121,6 +129,9 @@ def create_image(equity_df, currency_df, bond_df, width=64, height=64) -> np.nda
 
     # Open the image using PIL
     image = Image.open(img_bytes).resize((width, height), resample=Resampling.NEAREST)
+
+    # Set all pixels to white (255) if the pixel value is greater than 20
+    image = image.point(lambda p: p > 1 and 255)
 
     # Convert the image to a numpy array
     image_array = np.array(image)
