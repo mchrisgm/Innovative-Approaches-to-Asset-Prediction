@@ -16,7 +16,7 @@ from calculator import outcomes
 
 
 IMAGE_SIZE = 128
-LOOKBACK_PERIOD = 20
+LOOKBACK_PERIOD = 5
 SAVE_PGNS = False
 NO_IMAGES_TO_GENERATE = 0
 
