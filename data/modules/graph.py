@@ -20,6 +20,11 @@ def create_candlestick(df) -> go.Ohlc:
     Returns:
     go.Ohlc: Plotly Candlestick object.
     """ # noqa
+    assert "Date" in df.columns, "Date column not found in the DataFrame"
+    assert "Open" in df.columns, "Open column not found in the DataFrame"
+    assert "High" in df.columns, "High column not found in the DataFrame"
+    assert "Low" in df.columns, "Low column not found in the DataFrame"
+    assert "Close" in df.columns, "Close column not found in the DataFrame"
     # Create the candlestick chart
     fig = go.Ohlc(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"])  # noqa
 
@@ -37,6 +42,10 @@ def create_candlestick(df) -> go.Ohlc:
         # Set the color for increasing and decreasing candles to blue (converted to white in grayscale image)
         fig.increasing.line.color = '#0000FF'
         fig.decreasing.line.color = '#0000FF'
+
+        fig.increasing.line.width = 1
+        fig.decreasing.line.width = 1
+
     return fig
 
 
@@ -50,16 +59,19 @@ def create_line(df) -> go.Scatter:
     Returns:
     go.Scatter: Plotly Scatter object.
     """  # noqa
+    assert "Date" in df.columns, "Date column not found in the DataFrame"
+    assert "Index" in df.columns, "Index column not found in the DataFrame"
     # Create the line chart
     fig = go.Scatter(x=df["Date"], y=df["Index"], mode="lines")
 
     # Set the line color to white
     fig.line.color = '#0000FF'
+    fig.line.width = 0.1
 
     return fig
 
 
-def make_figure(equity_df, currency_df, bond_df) -> go.Figure:
+def make_figure(equity_df, currency_df, bond_df, lookback=5) -> go.Figure:
     """
     Creates a Plotly figure with subplots for equity, currency, and bond data.
 
@@ -79,10 +91,10 @@ def make_figure(equity_df, currency_df, bond_df) -> go.Figure:
     fig = make_subplots(rows=3, cols=1,
                         shared_xaxes=True,
                         shared_yaxes=False,
-                        vertical_spacing=0.1)  # noqa
+                        vertical_spacing=0.05)  # noqa
 
     # Update the layout of the figure
-    fig.update_layout(plot_bgcolor='black', font_color="white", autosize=True, width=1000, height=1000)   # noqa
+    fig.update_layout(plot_bgcolor='black', font_color="white", autosize=False, width=lookback*3, height=32)   # noqa
     fig.update_layout(margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="black")
 
     # Disable the legend
@@ -104,7 +116,7 @@ def make_figure(equity_df, currency_df, bond_df) -> go.Figure:
     return fig
 
 
-def create_image(equity_df, currency_df, bond_df, width=64, height=64) -> np.ndarray:   # noqa
+def create_image(equity_df, currency_df, bond_df, width=64, height=64, lookback=5) -> np.ndarray:   # noqa
     """
     Creates an image from the given dataframes and converts it to a grayscale numpy array.
 
@@ -119,16 +131,17 @@ def create_image(equity_df, currency_df, bond_df, width=64, height=64) -> np.nda
     np.ndarray: Grayscale numpy array of the image.
     """ # noqa
     # Create the Plotly figure
-    fig: go.Figure = make_figure(equity_df, currency_df, bond_df)
+    fig: go.Figure = make_figure(equity_df, currency_df, bond_df, lookback=lookback)
 
     # Save the figure to a BytesIO object as a PNG image
     img_bytes = BytesIO()
     fig.write_image(img_bytes, format="png",
-                    width=width, height=height)
+                    width=lookback*3, height=32)
     img_bytes.seek(0)
 
     # Open the image using PIL
-    image = Image.open(img_bytes).resize((width, height), resample=Resampling.NEAREST)
+    image = Image.open(img_bytes)\
+                 .resize((width, height), resample=Resampling.NEAREST)
 
     # Set all pixels to white (255) if the pixel value is greater than 20
     image = image.point(lambda p: p > 1 and 255)
