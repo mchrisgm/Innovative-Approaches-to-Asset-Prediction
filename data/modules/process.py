@@ -185,17 +185,9 @@ class DataComposer:
             self.equity_asset = Asset(name=equity_name)
 
         if self.currency_filename is not None:
-        currency_name = self.currency_filename.split(".")[1]
-        currency_name = self.currency_filename.split(".")[1]
-        bond_name = self.bond_filename.split(".")[1]
-
-        self.equity_asset = Asset(name=equity_name)
             currency_name = self.currency_filename.split(".")[1]
-        bond_name = self.bond_filename.split(".")[1]
-
-        self.equity_asset = Asset(name=equity_name)
             self.currency_asset = Asset(name=currency_name)
-
+        
         if self.bond_filename is not None:
             bond_name = self.bond_filename.split(".")[1]
             self.bond_asset = Asset(name=bond_name)
@@ -219,15 +211,7 @@ class DataComposer:
         """ # noqa
 
         def load_equity():
-        equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
-        equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
-        currency_data = pd.read_csv(os.path.join(self.directory, self.currency_filename), parse_dates=["Date"])     # noqa
-        bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])             # noqa
-
             equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
-        currency_data = pd.read_csv(os.path.join(self.directory, self.currency_filename), parse_dates=["Date"])     # noqa
-        bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])             # noqa
-
             self.equity_asset.set(equity_data)
         
         def load_currency():
@@ -360,29 +344,13 @@ def process(unprocessed_folder: str = "./data/unprocessed",
         equity = max(equities)
 
     if currencies != None:
-    currencies = [c for c in currencies if currency in c]
-    currencies = [c for c in currencies if currency in c]
-    bonds = [b for b in bonds if bond in b]
-
-    equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
         currencies = [c for c in currencies if currency in c]
-    bonds = [b for b in bonds if bond in b]
-
-    equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
         currencies = [c for c in currencies if start_year <= int(c.split(".")[2]) and int(c.split(".")[3]) <= end_year] or [""] # noqa
         currency = max(currencies)
 
     if bonds != None:
         bonds = [b for b in bonds if bond in b]
-    bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
-    bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
-
-    equity = max(equities)
-    currency = max(currencies)
         bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
-
-    equity = max(equities)
-    currency = max(currencies)
         bond = max(bonds)
 
     names: dict[str, str] = {"equity": equity,

@@ -30,11 +30,11 @@ def create_candlestick(ax: matplotlib.axes.Axes, df):
                 [row['Low'], row['High']], 
                 color='#0000FF', linewidth=0.5)
         # open marker
-        ax.plot([row['Date']-timedelta(hours=3), row['Date']-timedelta(hours=10)], 
+        ax.plot([row['Date']-timedelta(hours=1), row['Date']-timedelta(hours=11)], 
                 [row['Open'], row['Open']], 
                 color='#0000FF', linewidth=1)
         # close marker
-        ax.plot([row['Date']+timedelta(hours=3), row['Date']+timedelta(hours=10)], 
+        ax.plot([row['Date']-timedelta(hours=1), row['Date']+timedelta(hours=11)], 
                 [row['Close'], row['Close']], 
                 color='#0000FF', linewidth=1)
 
