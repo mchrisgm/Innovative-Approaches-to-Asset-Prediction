@@ -1,7 +1,5 @@
 __all__ = ['process']
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from multiprocessing import Pool, cpu_count
 import os
 import logging
 import shutil
@@ -167,9 +165,9 @@ class DataComposer:
         """ # noqa
         self.directory = directory
         self.save_directory = save_directory
-        self.equity_filename = filenames.get("equity", "")
-        self.currency_filename = filenames.get("currency", "")
-        self.bond_filename = filenames.get("bond", "")
+        self.equity_filename = filenames.get("equity", None)
+        self.currency_filename = filenames.get("currency", None)
+        self.bond_filename = filenames.get("bond", None)
         self.lookback = self.lookback if lookback == 5 else lookback
 
         if not self.file_exists(directory, self.equity_filename):
@@ -182,13 +180,25 @@ class DataComposer:
             logging.error(f"File not found: {self.bond_filename}")
             raise FileNotFoundError(f"File not found: {self.bond_filename}")
 
-        equity_name = self.equity_filename.split(".")[1]
+        if self.equity_filename is not None:
+            equity_name = self.equity_filename.split(".")[1]
+            self.equity_asset = Asset(name=equity_name)
+
+        if self.currency_filename is not None:
+        currency_name = self.currency_filename.split(".")[1]
         currency_name = self.currency_filename.split(".")[1]
         bond_name = self.bond_filename.split(".")[1]
 
         self.equity_asset = Asset(name=equity_name)
-        self.currency_asset = Asset(name=currency_name)
-        self.bond_asset = Asset(name=bond_name)
+            currency_name = self.currency_filename.split(".")[1]
+        bond_name = self.bond_filename.split(".")[1]
+
+        self.equity_asset = Asset(name=equity_name)
+            self.currency_asset = Asset(name=currency_name)
+
+        if self.bond_filename is not None:
+            bond_name = self.bond_filename.split(".")[1]
+            self.bond_asset = Asset(name=bond_name)
 
     def file_exists(self, directory: str, filename: str):
         """
@@ -207,13 +217,33 @@ class DataComposer:
         """
         Load the asset data from CSV files and crop to the effective date range.
         """ # noqa
+
+        def load_equity():
+        equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
         equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
         currency_data = pd.read_csv(os.path.join(self.directory, self.currency_filename), parse_dates=["Date"])     # noqa
         bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])             # noqa
 
-        self.equity_asset.set(equity_data)
-        self.currency_asset.set(currency_data)
-        self.bond_asset.set(bond_data)
+            equity_data = pd.read_csv(os.path.join(self.directory, self.equity_filename), parse_dates=["Date"])         # noqa
+        currency_data = pd.read_csv(os.path.join(self.directory, self.currency_filename), parse_dates=["Date"])     # noqa
+        bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])             # noqa
+
+            self.equity_asset.set(equity_data)
+        
+        def load_currency():
+            currency_data = pd.read_csv(os.path.join(self.directory, self.currency_filename), parse_dates=["Date"])
+            self.currency_asset.set(currency_data)
+
+        def load_bond():
+            bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])
+            self.bond_asset.set(bond_data)
+
+        if self.equity_filename is not None:
+            load_equity()
+        if self.currency_filename is not None:
+            load_currency()
+        if self.bond_filename is not None:
+            load_bond()
 
         self.effective_start_year = max(self.equity_asset.get_start_year(), self.currency_asset.get_start_year(), self.bond_asset.get_start_year())     # noqa
         self.effective_end_year = min(self.equity_asset.get_end_year(), self.currency_asset.get_end_year(), self.bond_asset.get_end_year())             # noqa
@@ -324,17 +354,36 @@ def process(unprocessed_folder: str = "./data/unprocessed",
             else:
                 print(f"Unknown file type: {filename}")
 
-    equities = [e for e in equities if equity in e]
+    if equities != None:
+        equities = [e for e in equities if equity in e]
+        equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
+        equity = max(equities)
+
+    if currencies != None:
+    currencies = [c for c in currencies if currency in c]
     currencies = [c for c in currencies if currency in c]
     bonds = [b for b in bonds if bond in b]
 
     equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
-    currencies = [c for c in currencies if start_year <= int(c.split(".")[2]) and int(c.split(".")[3]) <= end_year] or [""] # noqa
+        currencies = [c for c in currencies if currency in c]
+    bonds = [b for b in bonds if bond in b]
+
+    equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
+        currencies = [c for c in currencies if start_year <= int(c.split(".")[2]) and int(c.split(".")[3]) <= end_year] or [""] # noqa
+        currency = max(currencies)
+
+    if bonds != None:
+        bonds = [b for b in bonds if bond in b]
+    bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
     bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
 
     equity = max(equities)
     currency = max(currencies)
-    bond = max(bonds)
+        bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
+
+    equity = max(equities)
+    currency = max(currencies)
+        bond = max(bonds)
 
     names: dict[str, str] = {"equity": equity,
                              "currency": currency,
