@@ -81,17 +81,17 @@ def make_figure(equity_df=None, currency_df=None, bond_df=None, lookback=5):
 
     row = 1
     if equity_df is not None:
-        equity_df['Date'] = pd.to_datetime(equity_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
+        # equity_df['Date'] = pd.to_datetime(equity_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
         fig.add_trace(create_candlestick(equity_df), row=row, col=1)
         row += 1
 
     if currency_df is not None:
-        currency_df['Date'] = pd.to_datetime(currency_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
+        # currency_df['Date'] = pd.to_datetime(currency_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
         fig.add_trace(create_candlestick(currency_df), row=row, col=1)
         row += 1
 
     if bond_df is not None:
-        bond_df['Date'] = pd.to_datetime(bond_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
+        # bond_df['Date'] = pd.to_datetime(bond_df['Date'], format='%d%b%Y:%H:%M:%S.%f')
         fig.add_trace(create_line(bond_df), row=row, col=1)
 
     # Update the layout of the figure
