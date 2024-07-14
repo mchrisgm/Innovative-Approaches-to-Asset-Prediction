@@ -4,6 +4,9 @@ import os
 import logging
 import shutil
 from pathlib import Path
+from tqdm import tqdm
+import time
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -12,10 +15,13 @@ from PIL import Image
 from graph import create_image
 from calculator import outcomes
 
+warnings.simplefilter(action='ignore', category=Warning)
 
-IMAGE_SIZE = 128
-LOOKBACK_PERIOD = 5
+IMAGE_SIZE = 64
+LOOKBACK_PERIOD = 9
 SAVE_PGNS = False
+RGB_CHANNELS = 3
+MONOTONIC = False
 NO_IMAGES_TO_GENERATE = 0
 
 
@@ -147,13 +153,15 @@ class DataComposer:
     image_size = IMAGE_SIZE
     n_images = NO_IMAGES_TO_GENERATE
     save_png = SAVE_PGNS
+    rgb_channels = RGB_CHANNELS
+    monotonic = MONOTONIC
 
     def __init__(self, directory="./data/unprocessed",
                  save_directory="./data/processed",
                  lookback=5,
-                 filenames: dict[str, str] = {"equity": "",
-                                              "currency": "",
-                                              "bond": ""}):
+                 filenames: dict[str, str] = {"equity": None,
+                                              "currency": None,
+                                              "bond": None}):
         """
         Initialize the DataComposer with directories, lookback period, and filenames.
 
@@ -170,25 +178,25 @@ class DataComposer:
         self.bond_filename = filenames.get("bond", None)
         self.lookback = self.lookback if lookback == 5 else lookback
 
-        if not self.file_exists(directory, self.equity_filename):
+        if self.equity_filename and not self.file_exists(directory, self.equity_filename):
             logging.error(f"File not found: {self.equity_filename}")
             raise FileNotFoundError(f"File not found: {self.equity_filename}")
-        if not self.file_exists(directory, self.currency_filename):
+        if self.currency_filename and not self.file_exists(directory, self.currency_filename):
             logging.error(f"File not found: {self.currency_filename}")
             raise FileNotFoundError(f"File not found: {self.currency_filename}")
-        if not self.file_exists(directory, self.bond_filename):
+        if self.bond_filename and not self.file_exists(directory, self.bond_filename):
             logging.error(f"File not found: {self.bond_filename}")
             raise FileNotFoundError(f"File not found: {self.bond_filename}")
 
-        if self.equity_filename is not None:
+        if self.equity_filename:
             equity_name = self.equity_filename.split(".")[1]
             self.equity_asset = Asset(name=equity_name)
 
-        if self.currency_filename is not None:
+        if self.currency_filename:
             currency_name = self.currency_filename.split(".")[1]
             self.currency_asset = Asset(name=currency_name)
         
-        if self.bond_filename is not None:
+        if self.bond_filename:
             bond_name = self.bond_filename.split(".")[1]
             self.bond_asset = Asset(name=bond_name)
 
@@ -222,19 +230,31 @@ class DataComposer:
             bond_data = pd.read_csv(os.path.join(self.directory, self.bond_filename), parse_dates=["Date"])
             self.bond_asset.set(bond_data)
 
-        if self.equity_filename is not None:
+        if self.equity_filename:
             load_equity()
-        if self.currency_filename is not None:
+        if self.currency_filename:
             load_currency()
-        if self.bond_filename is not None:
+        if self.bond_filename:
             load_bond()
 
-        self.effective_start_year = max(self.equity_asset.get_start_year(), self.currency_asset.get_start_year(), self.bond_asset.get_start_year())     # noqa
-        self.effective_end_year = min(self.equity_asset.get_end_year(), self.currency_asset.get_end_year(), self.bond_asset.get_end_year())             # noqa
+        self.effective_start_year = max(
+            self.equity_asset.get_start_year() if self.equity_filename else pd.Timestamp.min,
+            self.currency_asset.get_start_year() if self.currency_filename else pd.Timestamp.min,
+            self.bond_asset.get_start_year() if self.bond_filename else pd.Timestamp.min
+        )
 
-        self.equity_asset.crop(self.effective_start_year, self.effective_end_year)      # noqa
-        self.currency_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"])    # noqa
-        self.bond_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"])        # noqa
+        self.effective_end_year = min(
+            self.equity_asset.get_end_year() if self.equity_filename else pd.Timestamp.max,
+            self.currency_asset.get_end_year() if self.currency_filename else pd.Timestamp.max,
+            self.bond_asset.get_end_year() if self.bond_filename else pd.Timestamp.max
+        )
+
+        if self.equity_filename:
+            self.equity_asset.crop(self.effective_start_year, self.effective_end_year)
+        if self.currency_filename:
+            self.currency_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"] if self.equity_filename else None)
+        if self.bond_filename:
+            self.bond_asset.crop(self.effective_start_year, self.effective_end_year, self.equity_asset.get()["Date"] if self.equity_filename else None)
 
     def save(self):
         """
@@ -242,9 +262,10 @@ class DataComposer:
         """ # noqa
         output_filename = f"{self.save_directory}/{self.equity_asset.name}.{self.currency_asset.name}.{self.bond_asset.name}.{self.effective_start_year.year}.{self.effective_end_year.year}"   # noqa
 
-        outcomes_df = outcomes(self.equity_asset.get(),
-                               self.currency_asset.get(),
-                               self.bond_asset.get())
+        outcomes_df = outcomes(self.equity_asset.get() if self.equity_filename else pd.DataFrame(),
+                               self.currency_asset.get() if self.currency_filename else pd.DataFrame(),
+                               self.bond_asset.get() if self.bond_filename else pd.DataFrame(),
+                               monotonic=self.monotonic)
 
         # Remove the first self.lookback rows of the outcomes_df
         outcomes_df = outcomes_df.iloc[self.lookback-1:]
@@ -252,12 +273,9 @@ class DataComposer:
         if self.n_images > 0:
             outcomes_df = outcomes_df.sample(n=self.n_images)
 
-        equity_lookback = lookback_windows(self.equity_asset.get(),  # noqa
-                                           self.lookback)
-        currency_lookback = lookback_windows(self.currency_asset.get(),  # noqa
-                                             self.lookback)
-        bond_lookback = lookback_windows(self.bond_asset.get(),  # noqa
-                                         self.lookback)
+        equity_lookback = lookback_windows(self.equity_asset.get(), self.lookback) if self.equity_filename else []
+        currency_lookback = lookback_windows(self.currency_asset.get(), self.lookback) if self.currency_filename else []
+        bond_lookback = lookback_windows(self.bond_asset.get(), self.lookback) if self.bond_filename else []
 
         final_df = pd.DataFrame({
             "Image": pd.Series(dtype='object'),
@@ -266,36 +284,52 @@ class DataComposer:
             "Bond": pd.Series(dtype='float')
         })
 
-        def process_row(equity, currency, bond, outcome, idx, save_png, image_size, output_filename):
-            print(f"{idx / len(outcomes_df) * 100:.2f}%  -> {idx} images created")
-            outcome_image = create_image(equity, currency, bond, width=image_size, height=image_size)
+        def process_row(equity: pd.DataFrame,
+                        currency: pd.DataFrame,
+                        bond: pd.DataFrame,
+                        outcome: pd.DataFrame,
+                        idx, save_png, image_size,
+                        output_filename):
+            outcome_image = create_image(equity, currency, bond, width=image_size, height=image_size, rgb_channels=self.rgb_channels)
             new_row = {
                 "Image": outcome_image,
-                "Equity": outcome["Equity Movement"],
-                "Currency": outcome["Currency Movement"],
-                "Bond": outcome["Bond Movement"]
             }
+            if outcome.get("Equity Movement", None) != None:
+                new_row["Equity"] = outcome.get("Equity Movement")
+            if outcome.get("Currency Movement", None) != None:
+                new_row["Currency"] = outcome.get("Currency Movement")
+            if outcome.get("Bond Movement", None) != None:
+                new_row["Bond"] = outcome.get("Bond Movement")
+
             if save_png:
                 Image.fromarray(outcome_image).save(f"{output_filename}/{idx}.png")
             return new_row
 
         args = [(equity, currency, bond, outcome[1], idx, self.save_png, self.image_size, output_filename) 
-                for idx, (equity, currency, bond, outcome) in enumerate(zip(equity_lookback, currency_lookback, bond_lookback, outcomes_df.iterrows()), 1)]
+                for idx, (equity, currency, bond, outcome) in enumerate(zip(
+                    equity_lookback if self.equity_filename else [None]*len(outcomes_df),
+                    currency_lookback if self.currency_filename else [None]*len(outcomes_df),
+                    bond_lookback if self.bond_filename else [None]*len(outcomes_df),
+                    outcomes_df.iterrows()), 1)]
 
         rows = []
-
-        # with ThreadPoolExecutor(max_workers=cpu_count()) as executor:
-        #     futures = {executor.submit(process_row, *arg): arg for arg in args}
-        #     for future in as_completed(futures):
-        #         try:
-        #             row = future.result()
-        #             rows.append(row)
-        #         except Exception as e:
-        #             print(f"Error processing row: {e}")
-
-        for arg in args:
+        
+        start_time = time.time()
+        etas = []
+        for arg in tqdm(args, desc="Processing rows", unit="row"):
             row = process_row(*arg)
             rows.append(row)
+            elapsed_time = time.time() - start_time
+            rows_processed = len(rows)
+            rows_remaining = len(args) - rows_processed
+            time_per_row = elapsed_time / rows_processed
+            try:
+                etas.pop(0)
+            except IndexError:
+                pass
+            if len(etas) <= 30 * int(rows_processed/elapsed_time):
+                etas.append(rows_remaining * time_per_row)
+            eta = sum(etas) / len(etas)
 
         final_df = pd.DataFrame(rows)
 
@@ -308,9 +342,9 @@ class DataComposer:
 
 
 def process(unprocessed_folder: str = "./data/unprocessed",
-            equity: str = "SP500",
-            currency: str = "EURUSD",
-            bond: str = "USTREASURYINDEX",
+            equity: str = None,
+            currency: str = None,
+            bond: str = None,
             start_year: int = 2000,
             end_year: int = 2024):
     """
@@ -338,24 +372,36 @@ def process(unprocessed_folder: str = "./data/unprocessed",
             else:
                 print(f"Unknown file type: {filename}")
 
-    if equities != None:
-        equities = [e for e in equities if equity in e]
-        equities = [e for e in equities if start_year <= int(e.split(".")[2]) and int(e.split(".")[3]) <= end_year] or [""]     # noqa
-        equity = max(equities)
+    selected_equity = None
+    selected_currency = None
+    selected_bond = None
 
-    if currencies != None:
-        currencies = [c for c in currencies if currency in c]
-        currencies = [c for c in currencies if start_year <= int(c.split(".")[2]) and int(c.split(".")[3]) <= end_year] or [""] # noqa
-        currency = max(currencies)
+    if equity:
+        equity_files = [e for e in equities if equity in e]
+        equity_files = [e for e in equity_files if start_year <= int(e.split(".")[2]) <= end_year and start_year <= int(e.split(".")[3]) <= end_year]
+        if equity_files:
+            selected_equity = max(equity_files)
 
-    if bonds != None:
-        bonds = [b for b in bonds if bond in b]
-        bonds = [b for b in bonds if start_year <= int(b.split(".")[2]) and int(b.split(".")[3]) <= end_year] or [""]           # noqa
-        bond = max(bonds)
+    if currency:
+        currency_files = [c for c in currencies if currency in c]
+        currency_files = [c for c in currency_files if start_year <= int(c.split(".")[2]) <= end_year and start_year <= int(c.split(".")[3]) <= end_year]
+        if currency_files:
+            selected_currency = max(currency_files)
 
-    names: dict[str, str] = {"equity": equity,
-                             "currency": currency,
-                             "bond": bond}
+    if bond:
+        bond_files = [b for b in bonds if bond in b]
+        bond_files = [b for b in bond_files if start_year <= int(b.split(".")[2]) <= end_year and start_year <= int(b.split(".")[3]) <= end_year]
+        if bond_files:
+            selected_bond = max(bond_files)
+
+    print("Selected files:")
+    print("Equity:  \t", selected_equity)
+    print("Currency:\t", selected_currency)
+    print("Bond:    \t", selected_bond)
+
+    names: dict[str, str] = {"equity": selected_equity,
+                             "currency": selected_currency,
+                             "bond": selected_bond}
 
     composer = DataComposer(directory=unprocessed_folder,
                             filenames=names)
@@ -364,8 +410,13 @@ def process(unprocessed_folder: str = "./data/unprocessed",
 
 
 if __name__ == "__main__":
-    process()
-    data = np.load("./data/processed/SP500.EURUSD.USTREASURYINDEX.2014.2023/data.npy", allow_pickle=True)   # noqa
-    print(data)
+    equity = "SP500"
+    currency = None
+    bond = None
+    start=2000
+    end=2023
+    process(equity=equity, currency=currency, bond=bond,
+            start_year=start, end_year=end)
+    data = np.load(f"./data/processed/{equity if equity else 'ASSET'}.{currency if currency else 'ASSET'}.{bond if bond else 'ASSET'}.{start}.{end}/data.npy", allow_pickle=True)   # noqa
     print(data[0][0].shape)
     Image.fromarray(data[0][0]).resize((512, 512)).show()
