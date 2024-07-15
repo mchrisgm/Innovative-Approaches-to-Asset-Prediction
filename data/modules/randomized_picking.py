@@ -14,6 +14,7 @@ RANDOM_ASSETS = 10
 LOOKBACK = 9
 IMAGE_SIZE = 64
 CHANNELS = 3
+MONOTONIC_OUTPUT = True
 
 
 def get_random_dfs(path, number=10) -> list[pd.DataFrame]:
@@ -26,20 +27,20 @@ def get_random_dfs(path, number=10) -> list[pd.DataFrame]:
     return dfs
 
 
-def outcomes(data: list[pd.DataFrame]) -> list[pd.DataFrame]:
+def outcomes(data: list[pd.DataFrame], monotonic: bool = False) -> list[pd.DataFrame]:
     outcome_dfs: list[pd.DataFrame] = []
     for filename, df in data:
-        outcome_df = calculate_outcome(df)
+        outcome_df = calculate_outcome(df, monotonic=monotonic)
         outcome_dfs.append((filename, outcome_df))
     return outcome_dfs
 
 
-def calculate_outcome(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_outcome(df: pd.DataFrame, monotonic: bool = False) -> pd.DataFrame:
     # Calculate the percentage change in Close prices
     df["pct"] = df["Close"].pct_change()
     # Calculate the volume percentage
-    df["Mov"] = np.abs(((df["Close"] - df["Open"]) /
-                        (df["High"] - df["Low"]))).round(2) * np.sign(df["pct"])
+    df["Mov"] = (np.abs(((df["Close"] - df["Open"]) /
+                        (df["High"] - df["Low"]))).round(2) if not monotonic else 1) * np.sign(df["pct"])
     # Replace infinite values with NaN
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     # Drop rows with NaN values in 'pct' and 'Mov' columns
@@ -81,9 +82,9 @@ def process_asset(filename, asset_windows, lookback=5, image_size=64, channels=1
     return filename, rows
 
 
-def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1):
+def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1, monotonic=False):
     data = get_random_dfs(path=path, number=number)
-    data = outcomes(data)
+    data = outcomes(data, monotonic=monotonic)
     assets = [(filename, lookback_windows(df, lookback=lookback)) for filename, df in data]
 
     rows = []
@@ -111,4 +112,5 @@ def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, l
 
 if __name__ == '__main__':
     main(path="./data/unprocessed/US", number=RANDOM_ASSETS,
-         lookback=LOOKBACK, image_size=IMAGE_SIZE, channels=CHANNELS)
+         lookback=LOOKBACK, image_size=IMAGE_SIZE,
+         channels=CHANNELS, monotonic=MONOTONIC_OUTPUT)
