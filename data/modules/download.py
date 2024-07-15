@@ -6,7 +6,9 @@ from tqdm import tqdm
 
 __all__ = ['download']
 
+# https://www.kaggle.com/datasets/borismarjanovic/price-volume-data-for-all-us-stocks-etfs
 url = "https://storage.googleapis.com/kaggle-data-sets/4538/7213/bundle/archive.zip?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=gcp-kaggle-com%40kaggle-161607.iam.gserviceaccount.com%2F20240714%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20240714T151101Z&X-Goog-Expires=259200&X-Goog-SignedHeaders=host&X-Goog-Signature=b2b4c046d709f2f0a37cb68d8495d0e2cf744395000279b8efb257c62e888b3802a4af6965d8d09a644fcc9ed35ba5b56f30846ad7bc3bc5d250544234e174af27a9f7df8502df2bcc3a4c06528665163873619646d14d476a67f706e25dc99cb23455f7c2989680bb7410c4ade2d2e4455f41e2f97cff587b045344639cad433b49244bde4cf5bc5f763e1537b39ea14fde474f7a725ecb75a8a21c97fe158c7e2e4ff42bfffa4ab179de11bd5d42a053f2c257b89190100137a78cb76ebe421633ec018b5f909f7ae5d81d09006a0c830c180ea68903e10dfd4647b2c55b7d10e674ecece7c4c18059200a03619f76ddc3ab600772f8042f5482703fe34af4"
+
 
 def download():
     # Ensure the cache directory exists
@@ -48,6 +50,7 @@ def download():
     os.rename(os.path.join(unprocessed_dir, 'Stocks'), os.path.join(unprocessed_dir, 'US'))
 
     print("Extraction complete.")
+
 
 # Call the function to execute the download and extraction
 if __name__ == "__main__":
