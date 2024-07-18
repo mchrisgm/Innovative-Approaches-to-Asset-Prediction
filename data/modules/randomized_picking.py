@@ -11,7 +11,7 @@ from graph import create_image
 
 
 RANDOM_ASSETS = 10
-LOOKBACK = 9
+LOOKBACK = 10
 IMAGE_SIZE = 64
 CHANNELS = 3
 MONOTONIC_OUTPUT = True
@@ -100,7 +100,7 @@ def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, l
 
     final_df = pd.DataFrame(rows)
 
-    output_filename = f"{save_dir}/US.RANDOM.{number}"   # noqa
+    output_filename = f"{save_dir}/US.RANDOM.{number}.{lookback}.{image_size}.{channels}.{'MONO' if monotonic else 'RANGE'}"   # noqa
 
     output_path = Path(output_filename)
     if output_path.exists() and output_path.is_dir():
