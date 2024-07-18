@@ -13,6 +13,7 @@ IPython
 matplotlib
 tqdm
 seaborn
+scikit-learn
 
 # PyTorch and torchvision with CUDA 11.7 support
 -f https://download.pytorch.org/whl/cu117
