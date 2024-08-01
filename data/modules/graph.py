@@ -77,7 +77,7 @@ def make_figure(equity_df=None, currency_df=None, bond_df=None, lookback=5):
     """
     rows = sum([1 for df in [equity_df, currency_df, bond_df] if df is not None])
     fig = make_subplots(rows=rows, cols=1, shared_xaxes=True, vertical_spacing=0.02)
-    fig.update_layout(paper_bgcolor='black', plot_bgcolor='black')
+    # fig.update_layout(paper_bgcolor='black', plot_bgcolor='black')
 
     row = 1
     if equity_df is not None:
@@ -95,8 +95,8 @@ def make_figure(equity_df=None, currency_df=None, bond_df=None, lookback=5):
         fig.add_trace(create_line(bond_df), row=row, col=1)
 
     # Update the layout of the figure
-    fig.update_layout(plot_bgcolor='black', font_color="white", autosize=False, width=lookback*3, height=32)   # noqa
-    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="black")
+    # fig.update_layout(plot_bgcolor='black', font_color="white", autosize=False, width=lookback*3, height=32)   # noqa
+    # fig.update_layout(margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="black")
 
     # Disable the legend
     fig.update_layout(showlegend=False)
@@ -104,10 +104,19 @@ def make_figure(equity_df=None, currency_df=None, bond_df=None, lookback=5):
     for i in range(1, rows + 1):
         fig.update_xaxes(row=i, col=1, rangeslider_visible=False)
         # Update x-axis and y-axis properties for each subplot
-        fig.update_xaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
-        fig.update_yaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
+        # fig.update_xaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
+        # fig.update_yaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
 
-    fig.update_xaxes(type="category")
+    # fig.update_xaxes(type="category")
+
+
+    fig.update_layout(xaxis_rangeslider_visible=False)
+    fig.update_layout(plot_bgcolor='black',  font_color="white", autosize=True, width=120, height=120) # noqa
+    fig.update_layout(margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="black")
+    # fig.update_layout(xaxis=dict(type="category"))
+    fig.update_xaxes(showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")
+    fig.update_yaxes(showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")
+    
     return fig
 
 def create_image(equity_df=None, currency_df=None, bond_df=None, width=128, height=128, lookback=5, rgb_channels=1):
@@ -145,7 +154,7 @@ def create_image(equity_df=None, currency_df=None, bond_df=None, width=128, heig
     # image = image.filter(ImageFilter.SHARPEN)
 
     # Set all pixels to white (255) if the pixel value is greater than 1
-    image = image.point(lambda p: p > 1 and 255)
+    image = image.point(lambda p: p > 0 and 255)
 
     # Convert the image to a numpy array
     image_array = np.array(image)
@@ -183,7 +192,11 @@ if __name__ == "__main__":
     })
 
     # Create grayscale image from the dataframes
-    img = create_image(equity_df, currency_df, bond_df,
+    # img = create_image(equity_df, currency_df, bond_df,
+    #                    width=128, height=128, lookback=5,
+    #                    rgb_channels=3)
+    
+    img = create_image(equity_df=equity_df,
                        width=128, height=128, lookback=5,
                        rgb_channels=3)
     print(img.shape)
