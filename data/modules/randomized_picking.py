@@ -10,11 +10,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from graph import create_image
 
 
-RANDOM_ASSETS = 10
-LOOKBACK = 10
+RANDOM_ASSETS = 30
+LOOKBACK = 7
 IMAGE_SIZE = 64
 CHANNELS = 3
-MONOTONIC_OUTPUT = True
+MONOTONIC_OUTPUT = False
 
 
 def get_random_dfs(path, number=10) -> list[pd.DataFrame]:
@@ -22,8 +22,11 @@ def get_random_dfs(path, number=10) -> list[pd.DataFrame]:
     random_files = random.sample(files, number)
     dfs: list[pd.DataFrame] = []
     for file in random_files:
-        df: pd.DataFrame = pd.read_csv(f"{path}/{file}", parse_dates=["Date"])
-        dfs.append((file, df))
+        try:
+            df: pd.DataFrame = pd.read_csv(f"{path}/{file}", parse_dates=["Date"])
+            dfs.append((file, df))
+        except Exception as e:
+            print(f"Error reading {file}: {e}")
     return dfs
 
 
