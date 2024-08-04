@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-from graph import create_image
-from calculator import outcomes
+from .graph import create_image
+from .calculator import outcomes
 
 warnings.simplefilter(action='ignore', category=Warning)
 

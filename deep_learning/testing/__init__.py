@@ -1,1 +1,2 @@
-from .test import test
+from .test import *     # noqa
+from .predict import *  # noqa
