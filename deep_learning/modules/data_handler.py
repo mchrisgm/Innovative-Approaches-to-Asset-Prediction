@@ -9,7 +9,7 @@ import numbers
 import matplotlib.pyplot as plt
 
 
-__all__ = ['set_seed', 'get_dataset', 'train_val_test_split', 'split_features_targets', 'quantize_labels', 'transform', 'display_n_random']
+__all__ = ['set_seed', 'get_dataset', 'train_val_test_split', 'split_features_targets', 'quantize_labels', 'dequantize_labels', 'transform', 'display_n_random']
 
 
 def set_seed(seed):
@@ -55,29 +55,6 @@ def split_features_targets(data) -> tuple[np.ndarray, np.ndarray]:
     features = data[:, 0]
     targets = np.asarray(data[:, 1:], dtype=np.int64)
     return features, targets
-
-
-def quantize_labels(targets, num_classes=2):
-    """
-    Quantize targets from the range [-1, 1] to the integer range [0, num_classes-1].
-
-    Args:
-        targets (numpy.ndarray): Array of targets in the range [-1, 1].
-        num_classes (int): Number of classes to quantize to.
-
-    Returns:
-        numpy.ndarray: Quantized targets in the integer range [0, num_classes-1].
-    """
-    # Scale the range from [-1, 1] to [0, 1]
-    scaled_targets = (targets + 1) / 2
-
-    # Quantize to the range [0, num_classes-1]
-    quantized_targets = np.floor(scaled_targets * num_classes).astype(np.int64)
-
-    # Ensure targets are within the range [0, num_classes-1]
-    quantized_targets = np.clip(quantized_targets, 0, num_classes-1)
-
-    return quantized_targets
 
 
 def get_padding(image):
@@ -145,3 +122,46 @@ def display_n_random(data, labels, n=8):
         plt.title(labels[i])
         plt.axis('off')
     plt.show()
+
+
+def dequantize_labels(quantized_targets, num_classes=2):
+    """
+    Dequantize integer labels back to the continuous range [-1, 1].
+
+    Args:
+        quantized_targets (numpy.ndarray or int): Array of quantized targets in the integer range [0, num_classes-1].
+        num_classes (int): Number of classes used during quantization.
+
+    Returns:
+        numpy.ndarray or float: Dequantized values in the continuous range [-1, 1].
+    """
+    # Convert quantized targets to continuous values in the range [0, 1]
+    continuous_values = quantized_targets / (num_classes - 1)
+
+    # Scale the continuous values back to the range [-1, 1]
+    actual_values = continuous_values * 2 - 1
+
+    return actual_values
+
+
+def quantize_labels(targets, num_classes=2):
+    """
+    Quantize targets from the range [-1, 1] to the integer range [0, num_classes-1].
+
+    Args:
+        targets (numpy.ndarray): Array of targets in the range [-1, 1].
+        num_classes (int): Number of classes to quantize to.
+
+    Returns:
+        numpy.ndarray: Quantized targets in the integer range [0, num_classes-1].
+    """
+    # Scale the range from [-1, 1] to [0, 1]
+    scaled_targets = (targets + 1) / 2
+
+    # Quantize to the range [0, num_classes-1]
+    quantized_targets = np.floor(scaled_targets * (num_classes)).astype(np.int64)
+
+    # Ensure targets are within the range [0, num_classes-1]
+    quantized_targets = np.clip(quantized_targets, 0, num_classes-1)
+
+    return quantized_targets
