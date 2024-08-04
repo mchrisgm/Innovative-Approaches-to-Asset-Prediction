@@ -14,6 +14,7 @@ matplotlib
 tqdm
 seaborn
 scikit-learn
+qstrader
 
 # PyTorch and torchvision with CUDA 11.7 support
 -f https://download.pytorch.org/whl/cu117
