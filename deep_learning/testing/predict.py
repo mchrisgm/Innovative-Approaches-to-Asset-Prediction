@@ -1,9 +1,12 @@
 import json
 import torch
 from deep_learning import FlexibleNet
+
+import numpy as np
 import pandas as pd
 
 from data import create_image
+from deep_learning import dequantize_labels
 
 __all__ = ['predict']
 
@@ -28,5 +31,7 @@ def predict(model_filename: str, dataframes: list[pd.DataFrame], device='cpu') -
             outputs = model(image)
             _, predicted = torch.max(outputs, 1)
             outs.append(predicted.item())
+
+    outs = dequantize_labels(np.ndarray(outs), config['output_size'])
 
     return outs
