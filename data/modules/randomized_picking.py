@@ -10,16 +10,28 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from graph import create_image
 
 
-RANDOM_ASSETS = 30
-LOOKBACK = 7
+RANDOM_ASSETS = 10
+LOOKBACK = 5
 IMAGE_SIZE = 64
 CHANNELS = 3
 MONOTONIC_OUTPUT = False
 
 
-def get_random_dfs(path, number=10) -> list[pd.DataFrame]:
-    files = os.listdir(path)
-    random_files = random.sample(files, number)
+def get_random_dfs(path, number=10, specific=None) -> list[pd.DataFrame]:
+    files = sorted(os.listdir(path))
+    if not specific:
+        random_files = random.sample(files, number)
+    else:
+        random_files = []
+        for specific_file in sorted(specific):
+            specific_file: str = specific_file.lower().strip()
+            for file in files:
+                file: str = file.lower().strip()
+                if file.startswith(specific_file):
+                    random_files.append(file)
+                    break
+    print("Random files:")
+    print(*random_files, sep="\n")
     dfs: list[pd.DataFrame] = []
     for file in random_files:
         try:
@@ -85,8 +97,8 @@ def process_asset(filename, asset_windows, lookback=5, image_size=64, channels=1
     return filename, rows
 
 
-def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1, monotonic=False):
-    data = get_random_dfs(path=path, number=number)
+def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1, monotonic=False, specific=None, name="RANDOM"):
+    data = get_random_dfs(path=path, number=number, specific=specific)
     data = outcomes(data, monotonic=monotonic)
     assets = [(filename, lookback_windows(df, lookback=lookback)) for filename, df in data]
 
@@ -103,7 +115,7 @@ def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, l
 
     final_df = pd.DataFrame(rows)
 
-    output_filename = f"{save_dir}/US.RANDOM.{number}.{lookback}.{image_size}.{channels}.{'MONO' if monotonic else 'RANGE'}"   # noqa
+    output_filename = f"{save_dir}/US.{name}.{number}.{lookback}.{image_size}.{channels}.{'MONO' if monotonic else 'RANGE'}"   # noqa
 
     output_path = Path(output_filename)
     if output_path.exists() and output_path.is_dir():
@@ -116,4 +128,9 @@ def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, l
 if __name__ == '__main__':
     main(path="./data/unprocessed/US", number=RANDOM_ASSETS,
          lookback=LOOKBACK, image_size=IMAGE_SIZE,
-         channels=CHANNELS, monotonic=MONOTONIC_OUTPUT)
+         channels=CHANNELS, monotonic=MONOTONIC_OUTPUT,
+         specific=["aapl", "msft", "amzn",
+                   "nvda", "googl", "tsla",
+                   "goog", "brk-b", "fb",
+                   "unh"],
+         name="TOP10")
