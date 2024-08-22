@@ -49,7 +49,6 @@ You can set up and run the project using either a PowerShell script (`run.ps1`) 
 - **Create a virtual environment** in the project directory (if it doesn't already exist).
 - **Activate the virtual environment**.
 - **Install the required dependencies** listed in `requirements.txt`.
-- **Run the main script** (`main.py`).
 
 These scripts automate the setup and execution process, making it easier to get the project up and running.
 
