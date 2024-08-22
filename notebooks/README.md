@@ -1,0 +1,13 @@
+# Notebooks
+
+This folder contains the executable python notebooks where training and testing happens.
+
+## Model training
+
+To train the CNN, we are using the [Model Training](./Model%20training.ipynb) notebook, whihc contains the model development, data loading and splitting, training, validating and testing.
+
+## Backtesting
+
+To check the profitability of the trading model, we are [backtesting](https://www.investopedia.com/terms/b/backtesting.asp) the strategy on one of the largest US market indices, the S&P 500.
+
+![1724326163469](image/README/1724326163469.png)
