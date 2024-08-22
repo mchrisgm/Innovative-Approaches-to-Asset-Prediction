@@ -10,4 +10,4 @@ To train the CNN, we are using the [Model Training](./Model%20training.ipynb) no
 
 To check the profitability of the trading model, we are [backtesting](https://www.investopedia.com/terms/b/backtesting.asp) the strategy on one of the largest US market indices, the S&P 500.
 
-![1724326163469](image/README/1724326163469.png)
+![1724331815424](image/README/1724331815424.png)
