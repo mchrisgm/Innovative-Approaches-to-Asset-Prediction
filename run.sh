@@ -40,11 +40,3 @@ if [ -f "requirements.txt" ]; then
     python -m pip install --upgrade pip
     python -m pip install -r requirements.txt
 fi
-
-# Run the main script
-write_color "Running main script..." "cyan"
-python main.py
-
-# Deactivating the virtual environment
-write_color "Deactivating virtual environment..." "green"
-deactivate

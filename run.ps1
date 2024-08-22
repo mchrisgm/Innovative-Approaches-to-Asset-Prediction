@@ -29,11 +29,3 @@ if (Test-Path "requirements.txt") {
     & "$VENV_DIR\bin\python.exe" -m pip install --upgrade pip
     & "$VENV_DIR\bin\python.exe" -m pip install -r requirements.txt
 }
-
-# Run the main script
-Write-Color "Running main script..." "Cyan"
-& "$VENV_DIR\bin\python.exe" main.py
-
-# Deactivating the virtual environment
-Write-Color "Deactivating virtual environment..." "Green"
-&deactivate
