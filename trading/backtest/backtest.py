@@ -12,6 +12,7 @@ from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
 from qstrader.statistics.tearsheet import TearsheetStatistics
 from qstrader.trading.backtest import BacktestTradingSession
+from qstrader.broker.fee_model.percent_fee_model import PercentFeeModel
 
 
 __all__ = ['backtest']
@@ -108,7 +109,8 @@ def backtest(csv_file, initial_cash, lookback_period,
         rebalance='weekly',
         rebalance_weekday='FRI',
         rebalance_calendar='NYSE',
-        data_handler=strategy_data_handler
+        data_handler=strategy_data_handler,
+        fee_model=PercentFeeModel(0.001)
     )
 
     # Run the backtest
@@ -134,7 +136,8 @@ def backtest(csv_file, initial_cash, lookback_period,
         long_only=True,
         cash_buffer_percentage=0.01,
         data_handler=benchmark_data_handler,
-        initial_cash=initial_cash
+        initial_cash=initial_cash,
+        fee_model=PercentFeeModel(0.001)
     )
     benchmark_results = benchmark_backtest.run()
 
