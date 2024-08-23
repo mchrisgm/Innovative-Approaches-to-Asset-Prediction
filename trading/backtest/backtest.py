@@ -1,5 +1,4 @@
 import os
-import datetime
 from deep_learning import predict
 import pandas as pd
 import numpy as np
@@ -79,7 +78,8 @@ def load_data(csv_file):
 def backtest(csv_file, initial_cash, lookback_period,
              start_dt="2019-06-30 14:30:00",
              end_dt="2024-06-30 23:59:00",
-             model="18989.US.RANDOM.30.5.64.3.RANGE.2.49"):
+             model="18989.US.RANDOM.30.5.64.3.RANGE.2.49",
+             save_dir=None) -> TearsheetStatistics:
     # Load the data
     data = load_data(csv_file)
 
@@ -114,7 +114,7 @@ def backtest(csv_file, initial_cash, lookback_period,
     )
 
     # Run the backtest
-    results = strategy.run()
+    strategy.run()
 
     # Construct benchmark assets (buy & hold SPY)
     benchmark_symbols = ['SPY']
@@ -139,7 +139,7 @@ def backtest(csv_file, initial_cash, lookback_period,
         initial_cash=initial_cash,
         fee_model=PercentFeeModel(0.001)
     )
-    benchmark_results = benchmark_backtest.run()
+    benchmark_backtest.run()
 
     # Generate and save tearsheet
     tearsheet = TearsheetStatistics(
@@ -147,6 +147,6 @@ def backtest(csv_file, initial_cash, lookback_period,
         benchmark_equity=benchmark_backtest.get_equity_curve(),
         title='Predictive Strategy'
     )
-    tearsheet.plot_results(f'results/predictive_strategy_backtest_{datetime.datetime.now()}.png')
+    tearsheet.plot_results(filename=save_dir)
 
-    return results, tearsheet
+    return tearsheet
