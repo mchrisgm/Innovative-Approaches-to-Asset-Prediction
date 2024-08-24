@@ -24,22 +24,23 @@ The `DataComposer` is designed to process and analyze financial data from multip
 ### Data Loading and Processing
 
 1. **Loading Data**:
+
    - Data files for equities, currencies, and bonds are loaded from the `unprocessed` directory.
    - Each asset's data is stored in an instance of the `Asset` class.
-
 2. **Cropping Data**:
+
    - The data is cropped to the effective date range where all three assets have available data. This ensures synchronized analysis across all assets.
-
 3. **Generating Lookback Windows**:
+
    - Rolling lookback windows of a specified length are generated for each asset. These windows are used to analyze historical data over defined periods.
-
 4. **Calculating Percentage Changes**:
+
    - The `outcomes` function in `calculator.py` calculates the percentage change for each asset's closing price (or index for bonds). This helps in understanding daily movements.
-
 5. **Analyzing Movements**:
-   - Movements are analyzed by categorizing changes as long (positive) or short (negative). The cumulative sum of these movements is computed to gain insights into overall trends.
 
+   - Movements are analyzed by categorizing changes as long (positive) or short (negative). The cumulative sum of these movements is computed to gain insights into overall trends.
 6. **Generating Images**:
+
    - The `create_image` function in `graph.py` generates visual representations of the data. These images provide visual insights into the financial trends of the assets.
    - Generated images can be saved as PNG files.
 
@@ -47,7 +48,7 @@ The `DataComposer` is designed to process and analyze financial data from multip
 
 - Processed data, including generated images and computed metrics, are saved in the `processed` directory. This organized structure ensures easy access and further analysis.
 
-Filename meaning: `{origin}`.`{number of stocks}`.`{lookback period}`.`{image dimention}`.`{RGB channels}`.`{MONO (integer) or RANGE (float) target output}`
+Filename meaning: `{origin}`.`{number of stocks}`.`{lookback period}`.`{image dimension}`.`{RGB channels}`.`{MONO (integer) or RANGE (float) target output}`
 
 #### Sample generated Chart
 
