@@ -13,6 +13,7 @@ The `DataComposer` is designed to process and analyze financial data from multip
     - **download.py**: Contains functions to download data.
     - **graph.py**: Contains the `create_image` function to generate visual representations of the data.
     - **process.py**: Contains the `DataComposer` class and `process` function to handle data processing, analysis, and image generation.
+    - **randomized_picking.py**: Randomly selects a specified number of tickers from the `unprocessed` directory and combines the data together.
   - **processed/**: Directory where processed data will be saved.
   - **unprocessed/**: Directory where raw, unprocessed data is stored.
   - **__init__.py**: Initialization file for the data package.
@@ -45,6 +46,8 @@ The `DataComposer` is designed to process and analyze financial data from multip
 ### Saving Processed Data
 
 - Processed data, including generated images and computed metrics, are saved in the `processed` directory. This organized structure ensures easy access and further analysis.
+
+Filename meaning: `{origin}`.`{number of stocks}`.`{lookback period}`.`{image dimention}`.`{RGB channels}`.`{MONO (integer) or RANGE (float) target output}`
 
 #### Sample generated Chart
 
