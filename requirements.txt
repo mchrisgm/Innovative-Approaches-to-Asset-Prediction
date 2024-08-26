@@ -1,0 +1,23 @@
+# requirements.txt
+
+numpy<2.0.0
+pandas
+pandas-stubs
+plotly
+Pillow
+types-Pillow
+kaleido
+livelossplot
+ipykernel
+IPython
+matplotlib
+tqdm
+seaborn
+scikit-learn
+qstrader
+
+# PyTorch and torchvision with CUDA 11.7 support
+-f https://download.pytorch.org/whl/cu117
+torch
+torchvision
+torchaudio
