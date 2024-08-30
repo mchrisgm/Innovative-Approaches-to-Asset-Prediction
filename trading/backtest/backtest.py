@@ -1,5 +1,5 @@
 import os
-from deep_learning import predict
+from deep_learning import predict_cnn, predict_lstm
 import pandas as pd
 import numpy as np
 import pytz
@@ -16,7 +16,6 @@ from qstrader.broker.fee_model.percent_fee_model import PercentFeeModel
 
 __all__ = ['backtest']
 
-
 class PredictiveAlphaModel(FixedSignalsAlphaModel):
     def __init__(self, data, lookback_period, model):
         self.model = model
@@ -29,19 +28,81 @@ class PredictiveAlphaModel(FixedSignalsAlphaModel):
         self.current_position = 0  # 0 for no position, >0 for long, <0 for short
 
     def __call__(self, dt):
-        print(f"Predicting for {dt}...")
         end_date = pd.to_datetime(dt).tz_convert(self.data.index.tz)
-
         loc = self.data.index.get_loc(self.data.index.asof(end_date))
         start_date = self.data.index[loc - self.lookback_period]
-
         historical_data = self.data.loc[start_date:end_date]
 
         # Move Date index to a column
         historical_data.reset_index(inplace=True)
 
-        prediction = predict(self.model, [historical_data], device="cpu")
-        print(f"Prediction for {dt}: {prediction}")
+        # Existing signals
+        prediction_cnn = predict_cnn(self.model, [historical_data], device="cpu")[-1]
+
+        start_date = self.data.index[loc - self.lookback_period*3]
+        historical_data = self.data.loc[start_date:end_date]
+        historical_data = historical_data.drop(columns=['Adj Close'])
+        prediction_lstm = predict_lstm("./final_model.pth", historical_data, device="cpu")
+
+        # Calculate momentum
+        momentum = historical_data['Close'].pct_change().dropna().values[-1]
+        momentum_signal = np.clip(momentum / 0.01, -1, 1)  # Assuming 2% daily change is significant
+
+        start_date = self.data.index[loc - self.lookback_period*5]
+        historical_data = self.data.loc[start_date:end_date]
+
+        # New signals
+        # 1. Moving Average Convergence Divergence (MACD)
+        exp1 = historical_data['Close'].ewm(span=12, adjust=False).mean()
+        exp2 = historical_data['Close'].ewm(span=26, adjust=False).mean()
+        macd = exp1 - exp2
+        signal_line = macd.ewm(span=9, adjust=False).mean()
+        macd_histogram = macd - signal_line
+        macd_signal = np.clip(macd_histogram.iloc[-1] / (historical_data['Close'].std() * 0.1), -1, 1)
+
+        # 5. Relative Strength Index (RSI)
+        delta = historical_data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        rsi_signal = -np.clip((rsi.iloc[-1] - 50) / 25, -1, 1)  # Normalized to -1 (overbought) to 1 (oversold)
+
+        # 6. Bollinger Bands
+        sma = historical_data['Close'].rolling(window=20).mean()
+        std = historical_data['Close'].rolling(window=20).std()
+        upper_band = sma + (std * 2)
+        lower_band = sma - (std * 2)
+        bb_signal = np.clip((2 * (historical_data['Close'].iloc[-1] - sma.iloc[-1]) / (upper_band.iloc[-1] - lower_band.iloc[-1])), -1, 1)
+
+        # 7. Volume Oscillator
+        short_vol_ma = historical_data['Volume'].rolling(window=5).mean()
+        long_vol_ma = historical_data['Volume'].rolling(window=15).mean()
+        vol_osc = ((short_vol_ma - long_vol_ma) / long_vol_ma) * 100
+        vol_osc_signal = np.clip(vol_osc.iloc[-1] / 5, -1, 1)  # Assuming 20% change is significant
+
+        print(f"Prediction CNN: {prediction_cnn}")
+        print(f"Prediction LSTM: {prediction_lstm}")
+        print(f"Momentum: {momentum_signal}")
+        print(f"MACD Signal: {macd_signal}")
+        print(f"RSI Signal: {rsi_signal}")
+        print(f"Bollinger Bands Signal: {bb_signal}")
+        print(f"Volume Oscillator: {vol_osc_signal}")
+
+        # Combine the predictions and signals
+        # weights = [0.2, 0.6, 0.2, 0.2, 0.4, 0.2, 0.2]
+        weights = [0.6, 0.3, 0.2, 0.1, 0.4, 0.1, 0.1]
+        prediction = np.average([
+            prediction_cnn,
+            prediction_lstm,
+            momentum_signal,
+            macd_signal,
+            rsi_signal,
+            bb_signal,
+            vol_osc_signal
+        ], weights=weights)
+
+        print(f"Combined prediction for {dt}: {prediction}")
 
         # Ensure prediction is a single scalar value
         if isinstance(prediction, (np.ndarray, list)):
@@ -51,15 +112,15 @@ class PredictiveAlphaModel(FixedSignalsAlphaModel):
         prediction = np.clip(prediction, -1, 1)
 
         # Implement the strategy
-        if prediction > 0:
+        if prediction > 0.3:  # Increased threshold for long positions
             if self.current_position <= 0:
                 self.current_position = prediction
-                return {self.asset: prediction}  # Go long
-        elif prediction < 0:
+                return {self.asset: 1.0}  # Go long
+        elif prediction < -0.3:  # Increased threshold for short positions
             if self.current_position >= 0:
                 self.current_position = prediction
-                return {self.asset: prediction}  # Go short
-        else:  # signal == 0
+                return {self.asset: -1.0}  # Go short
+        else:
             if self.current_position != 0:
                 self.current_position = 0
                 return {self.asset: 0.0}  # Close position

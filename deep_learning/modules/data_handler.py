@@ -9,7 +9,9 @@ import numbers
 import matplotlib.pyplot as plt
 
 
-__all__ = ['set_seed', 'get_dataset', 'train_val_test_split', 'split_features_targets', 'quantize_labels', 'dequantize_labels', 'transform', 'display_n_random']
+__all__ = ['set_seed', 'get_dataset', 'train_val_test_split',
+           'split_features_targets', 'quantize_labels', 'dequantize_labels',
+           'transform', 'display_n_random', 'feature_eng']
 
 
 def set_seed(seed):
@@ -165,3 +167,62 @@ def quantize_labels(targets, num_classes=2):
     quantized_targets = np.clip(quantized_targets, 0, num_classes-1)
 
     return quantized_targets
+
+def feature_eng(df):
+    # Add basic technical indicators
+    df['SMA_5'] = df['Close'].rolling(window=5).mean()
+    df['SMA_10'] = df['Close'].rolling(window=10).mean()
+    df['EMA_5'] = df['Close'].ewm(span=5, adjust=False).mean()
+    df['EMA_10'] = df['Close'].ewm(span=10, adjust=False).mean()
+
+    # # Relative Strength Index (RSI)
+    # df['RSI_14'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+
+    # # Moving Average Convergence Divergence (MACD)
+    # macd = ta.trend.MACD(df['Close'])
+    # df['MACD'] = macd.macd()
+    # df['MACD_signal'] = macd.macd_signal()
+    # df['MACD_diff'] = macd.macd_diff()
+
+    # # Bollinger Bands
+    # bollinger = ta.volatility.BollingerBands(df['Close'], window=20)
+    # df['BB_high'] = bollinger.bollinger_hband()
+    # df['BB_low'] = bollinger.bollinger_lband()
+    # df['BB_width'] = bollinger.bollinger_wband()
+
+    # # Stochastic Oscillator
+    # stoch = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close'], window=14, smooth_window=3)
+    # df['Stoch_%K'] = stoch.stoch()
+    # df['Stoch_%D'] = stoch.stoch_signal()
+
+    # # Average True Range (ATR)
+    # atr = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close'], window=14)
+    # df['ATR_14'] = atr.average_true_range()
+
+    # # On-Balance Volume (OBV)
+    # obv = ta.volume.OnBalanceVolumeIndicator(df['Close'], df['Volume'])
+    # df['OBV'] = obv.on_balance_volume()
+
+    # # Rolling statistics
+    # df['Rolling_mean_5'] = df['Close'].rolling(window=5).mean()
+    # df['Rolling_std_5'] = df['Close'].rolling(window=5).std()
+    # df['Rolling_var_5'] = df['Close'].rolling(window=5).var()
+
+    # # Lag features
+    # df['Lag_1'] = df['Close'].shift(1)
+    # df['Lag_2'] = df['Close'].shift(2)
+    # df['Lag_3'] = df['Close'].shift(3)
+
+    # # Daily Return
+    # df['Daily_Return'] = df['Close'].pct_change()
+
+    # # Cumulative Returns
+    # df['Cumulative_Return'] = (1 + df['Daily_Return']).cumprod()
+
+    # # Price ratios
+    # df['Close/Open'] = df['Close'] / df['Open']
+    # df['High/Low'] = df['High'] / df['Low']
+
+    # Drop NaN values created by rolling calculations
+    df = df.dropna()
+    return df
