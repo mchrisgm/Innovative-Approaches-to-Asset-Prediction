@@ -15,6 +15,8 @@ LOOKBACK = 5
 IMAGE_SIZE = 64
 CHANNELS = 3
 MONOTONIC_OUTPUT = False
+SPECIFIC_ASSETS = None
+NAME = "RSI.RANDOM"
 
 
 def get_random_dfs(path, number=10, specific=None) -> list[pd.DataFrame]:
@@ -75,6 +77,7 @@ def lookback_windows(df: pd.DataFrame, lookback=5) -> list[pd.DataFrame]:
     list[pd.DataFrame]: List of DataFrames, each representing a lookback window with a Date column.
     """ # noqa
     windows = []
+    lookback = lookback * 4
     for start in range(len(df) - lookback + 2):
         end = start + lookback + 1
         lookback_window = df.iloc[start:end].reset_index()  # Reset the index to have Date as a column  # noqa
@@ -83,10 +86,14 @@ def lookback_windows(df: pd.DataFrame, lookback=5) -> list[pd.DataFrame]:
 
 
 def process_row(lookback_window: pd.DataFrame, lookback=5, image_size=64, channels=1) -> np.ndarray:
-    image_df = lookback_window.head(lookback)
-    outcome = lookback_window.tail(1)
-    image = create_image(equity_df=image_df, bond_df=None, currency_df=None, width=image_size, height=image_size, lookback=lookback, rgb_channels=channels)  # noqa
-    return {"image": image, "outcome": outcome["Mov"].values[0]}
+    try:
+        image_df = lookback_window.head(lookback * 4)
+        outcome = lookback_window.tail(1)
+        image = create_image([image_df], width=image_size, height=image_size, lookback=lookback, rgb_channels=channels)  # noqa
+        return {"image": image, "outcome": outcome["Mov"].values[0]}
+    except Exception as e:
+        print(f"Error processing row: {e}")
+        return {"image": None, "outcome": None}
 
 
 def process_asset(filename, asset_windows, lookback=5, image_size=64, channels=1, desc="Processing windows") -> list[dict]:
@@ -97,7 +104,9 @@ def process_asset(filename, asset_windows, lookback=5, image_size=64, channels=1
     return filename, rows
 
 
-def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1, monotonic=False, specific=None, name="RANDOM"):
+def main(path="./data/unprocessed/US", save_dir="./data/processed", number=10, lookback=5, image_size=64, channels=1, monotonic=False, specific=None, name=None):
+    if not name:
+        name = "RANDOM"
     data = get_random_dfs(path=path, number=number, specific=specific)
     data = outcomes(data, monotonic=monotonic)
     assets = [(filename, lookback_windows(df, lookback=lookback)) for filename, df in data]
@@ -129,8 +138,4 @@ if __name__ == '__main__':
     main(path="./data/unprocessed/US", number=RANDOM_ASSETS,
          lookback=LOOKBACK, image_size=IMAGE_SIZE,
          channels=CHANNELS, monotonic=MONOTONIC_OUTPUT,
-         specific=["aapl", "msft", "amzn",
-                   "nvda", "googl", "tsla",
-                   "goog", "brk-b", "fb",
-                   "unh"],
-         name="TOP10")
+         specific=SPECIFIC_ASSETS, name=NAME)
