@@ -23,7 +23,7 @@ def predict(model_filename: str, dataframes: list[pd.DataFrame], device='cpu') -
     with torch.no_grad():
         for dataframe in dataframes:
             # Create image from dataframe
-            image = create_image(equity_df=dataframe, bond_df=None, currency_df=None,
+            image = create_image([dataframe],
                                  width=config["img_size"][0], height=config["img_size"][1],
                                  lookback=len(dataframe), rgb_channels=config["in_channels"])
 

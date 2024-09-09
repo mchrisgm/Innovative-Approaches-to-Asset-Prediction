@@ -18,12 +18,12 @@ __all__ = ['backtest']
 
 
 class PredictiveAlphaModel(FixedSignalsAlphaModel):
-    def __init__(self, data, lookback_period, model):
+    def __init__(self, data, symbol, lookback_period, model):
         self.model = model
         print(f"Using pretrained model: {model}")
         self.data = data
         self.lookback_period = lookback_period
-        self.asset = 'EQ:SPY'
+        self.asset = "EQ:"+symbol
         self.signals = pd.Series(0.0, index=data.index)
         super().__init__({self.asset: self.signals})
         self.current_position = 0  # 0 for no position, >0 for long, <0 for short
@@ -83,19 +83,21 @@ def backtest(csv_file, initial_cash, lookback_period,
     # Load the data
     data = load_data(csv_file)
 
+    symbol = csv_file.split("/")[-1].split(".")[0]
+
     start_dt = pd.Timestamp(start_dt, tz=pytz.UTC)
     end_dt = pd.Timestamp(end_dt, tz=pytz.UTC)
 
     # Construct the symbols and assets necessary for the backtest
-    strategy_symbols = ['SPY']
-    strategy_assets = ['EQ:SPY']
+    strategy_symbols = [symbol]
+    strategy_assets = ["EQ:"+sym for sym in strategy_symbols]
     strategy_universe = StaticUniverse(strategy_assets)
-    strategy_data_source = CSVDailyBarDataSource(os.path.join(os.path.abspath('.'), 'data', 'unprocessed'), Equity, csv_symbols=strategy_symbols)
+    strategy_data_source = CSVDailyBarDataSource(os.path.join(os.path.abspath('.'), 'data', 'unprocessed'), Equity, csv_symbols=strategy_symbols, adjust_prices=False)
     strategy_data_handler = BacktestDataHandler(strategy_universe,
                                                 data_sources=[strategy_data_source])
 
     # Create the alpha model
-    strategy_alpha_model = PredictiveAlphaModel(data, lookback_period, model)
+    strategy_alpha_model = PredictiveAlphaModel(data, symbol, lookback_period, model)
 
     # Set up the backtest trading session
     strategy = BacktestTradingSession(
@@ -117,16 +119,16 @@ def backtest(csv_file, initial_cash, lookback_period,
     strategy.run()
 
     # Construct benchmark assets (buy & hold SPY)
-    benchmark_symbols = ['SPY']
-    benchmark_assets = ['EQ:SPY']
+    benchmark_symbols = strategy_symbols
+    benchmark_assets = strategy_assets
     benchmark_universe = StaticUniverse(benchmark_assets)
-    benchmark_data_source = CSVDailyBarDataSource(os.path.join(os.path.abspath('.'), 'data', 'unprocessed'), Equity, csv_symbols=benchmark_symbols)
+    benchmark_data_source = CSVDailyBarDataSource(os.path.join(os.path.abspath('.'), 'data', 'unprocessed'), Equity, csv_symbols=benchmark_symbols, adjust_prices=False)
     benchmark_data_handler = BacktestDataHandler(benchmark_universe,
                                                  data_sources=[benchmark_data_source])
 
     # Construct a benchmark Alpha Model that provides
     # 100% static allocation to the SPY ETF, with no rebalance
-    benchmark_alpha_model = FixedSignalsAlphaModel({'EQ:SPY': 1.0})
+    benchmark_alpha_model = FixedSignalsAlphaModel({sym: 1.0 for sym in benchmark_assets})
     benchmark_backtest = BacktestTradingSession(
         start_dt,
         end_dt,

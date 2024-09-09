@@ -24,17 +24,26 @@ def create_candlestick(df):
         line_width=1
     )
 
+def create_ohlc(df):
+    return go.Ohlc(
+        x=df.index,
+        open=df['Open'],
+        high=df['High'],
+        low=df['Low'],
+        close=df['Close']
+    )
+
 def create_line(x, y):
     return go.Scatter(
         x=x,
         y=y,
         mode='lines',
-        line=dict(color='#0000FF', width=1),
+        line=dict(color='#FFFFFF', width=1),
     )
 
 def make_figure(data_frames, lookback=5):
-    num_frames = len(data_frames)
-    fig = make_subplots(rows=num_frames + 1, cols=1, shared_xaxes=True, vertical_spacing=0.02)
+    num_frames = len(data_frames) + 0
+    fig = make_subplots(rows=num_frames, cols=1, shared_xaxes=True, vertical_spacing=0.02)
 
     for i, df in enumerate(data_frames, 1):
         # Calculate RSI using the full dataset
@@ -46,7 +55,8 @@ def make_figure(data_frames, lookback=5):
         rsi_plot = rsi.loc[plot_start:]
 
         fig.add_trace(create_candlestick(df_plot), row=i, col=1)
-        fig.add_trace(create_line(rsi_plot.index, rsi_plot), row=num_frames + 1, col=1)
+        # fig.add_trace(create_ohlc(df_plot), row=i, col=1)
+        # fig.add_trace(create_line(rsi_plot.index, rsi_plot), row=num_frames + 1, col=1)
 
     fig.update_layout(showlegend=False)
     fig.update_layout(xaxis_rangeslider_visible=False)

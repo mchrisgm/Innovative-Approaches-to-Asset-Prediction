@@ -11,7 +11,7 @@ from graph import create_image
 
 
 RANDOM_ASSETS = 10
-LOOKBACK = 5
+LOOKBACK = 4
 IMAGE_SIZE = 64
 CHANNELS = 3
 MONOTONIC_OUTPUT = False
