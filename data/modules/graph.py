@@ -167,13 +167,48 @@ if __name__ == "__main__":
     date_period = 5
     dates = pd.date_range(start="2020-01-01", periods=date_period)
 
-    # Create equity dataframe
+    # Function to generate valid OHLC data for a single day
+    def generate_valid_ohlc(prev_close):
+        # Define the maximum allowed price change (e.g., 5% of previous close)
+        max_change = prev_close * 0.05
+
+        # Generate Open price (equal to previous day's Close)
+        open_price = prev_close
+
+        # Generate High and Low within the allowed range
+        high = np.random.uniform(open_price, open_price + max_change)
+        low = np.random.uniform(open_price - max_change, open_price)
+
+        # Ensure High is always greater than Low
+        high = max(high, low)
+
+        # Generate Close price between High and Low
+        close = np.random.uniform(low, high)
+
+        return round(open_price, 2), round(high, 2), round(low, 2), round(close, 2)
+
+    # Initialize lists to store the OHLC data
+    opens, highs, lows, closes = [], [], [], []
+
+    # Generate initial closing price
+    prev_close = np.random.uniform(100, 200)
+
+    # Generate valid OHLC data for each day
+    for _ in range(date_period):
+        open_price, high, low, close = generate_valid_ohlc(prev_close)
+        opens.append(open_price)
+        highs.append(high)
+        lows.append(low)
+        closes.append(close)
+        prev_close = close  # Set the next day's previous close
+
+    # Create equity dataframe with valid OHLC data
     equity_df = pd.DataFrame({
         "Date": dates,
-        "Open": np.random.randint(100, 200, date_period),
-        "High": np.random.randint(200, 300, date_period),
-        "Low": np.random.randint(50, 100, date_period),
-        "Close": np.random.randint(100, 200, date_period)
+        "Open": opens,
+        "High": highs,
+        "Low": lows,
+        "Close": closes
     })
 
     # Create currency dataframe
@@ -195,7 +230,7 @@ if __name__ == "__main__":
     # img = create_image(equity_df, currency_df, bond_df,
     #                    width=128, height=128, lookback=5,
     #                    rgb_channels=3)
-    
+
     img = create_image(equity_df=equity_df,
                        width=128, height=128, lookback=5,
                        rgb_channels=3)

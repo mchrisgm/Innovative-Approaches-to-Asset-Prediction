@@ -3,7 +3,7 @@ name: Push source to IRP Repo
 on:
   push:
     branches:
-      - main
+      - release
 
 jobs:
   push-pdf:
