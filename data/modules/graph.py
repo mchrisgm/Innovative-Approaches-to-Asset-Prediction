@@ -107,7 +107,7 @@ def make_figure(equity_df=None, currency_df=None, bond_df=None, lookback=5):
         # fig.update_xaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
         # fig.update_yaxes(row=i, col=1, showgrid=False, zeroline=False, showline=False, gridcolor="white", showticklabels=False, linecolor="white")    # noqa
 
-    # fig.update_xaxes(type="category")
+    fig.update_xaxes(type="category")
 
 
     fig.update_layout(xaxis_rangeslider_visible=False)

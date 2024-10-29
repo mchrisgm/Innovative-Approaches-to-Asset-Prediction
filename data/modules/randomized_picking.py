@@ -10,12 +10,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from graph import create_image
 
 RANDOM_ASSETS = 10
-LOOKBACK = 4
+LOOKBACK = 5
 IMAGE_SIZE = 64
 CHANNELS = 3
 MONOTONIC_OUTPUT = False
 VOL_LOOKBACK = 10  # Constant for volatility calculation
-STD_VARIATION = 1.0  # Constant for standard deviation threshold
+STD_VARIATION = [0.5, 1.0, 2.0]  # Constant for standard deviation threshold
 
 def get_random_dfs(path, number=10, specific=None) -> list[pd.DataFrame]:
     files = sorted(os.listdir(path))
@@ -45,7 +45,7 @@ def outcomes(data: list[pd.DataFrame], monotonic: bool = False, vol: bool = True
     outcome_dfs: list[pd.DataFrame] = []
     for filename, df in data:
         if vol:
-            outcome_df = calculate_vol_outcome(df, std_variation=STD_VARIATION, n_days=VOL_LOOKBACK)
+            outcome_df = calculate_vol_outcome(df, std_variations=STD_VARIATION, n_days=VOL_LOOKBACK)
         else:
             outcome_df = calculate_outcome(df, monotonic=monotonic)
         outcome_dfs.append((filename, outcome_df))
@@ -59,17 +59,24 @@ def calculate_outcome(df: pd.DataFrame, monotonic: bool = False) -> pd.DataFrame
     df.dropna(subset=["pct", "Mov"], inplace=True)
     return df
 
-def calculate_vol_outcome(df: pd.DataFrame, std_variation: float = 1.0, n_days: int = 20) -> pd.DataFrame:
+def calculate_vol_outcome(df: pd.DataFrame, std_variations: list = [0.5, 1.0, 2.0], n_days: int = 20) -> pd.DataFrame:
     df['pct_change'] = df['Close'].pct_change()
     df['rolling_std'] = df['pct_change'].rolling(window=n_days).std()
     df['rolling_mean'] = df['pct_change'].rolling(window=n_days).mean()
-    df['Mov'] = np.where(
-        df['pct_change'] > df['rolling_mean'] + std_variation * df['rolling_std'], 1,
-        np.where(
-            df['pct_change'] < df['rolling_mean'] - std_variation * df['rolling_std'], 1,
-            0
-        )
-    )
+
+    def classify_volatility(row):
+        abs_deviation = abs(row['pct_change'] - row['rolling_mean'])
+        if abs_deviation <= std_variations[0] * row['rolling_std']:
+            return 0  # Low volatility
+        elif abs_deviation <= std_variations[1] * row['rolling_std']:
+            return 1  # Medium volatility
+        elif abs_deviation <= std_variations[2] * row['rolling_std']:
+            return 2  # High volatility
+        else:
+            return 3  # Very high volatility
+
+    df['Mov'] = df.apply(classify_volatility, axis=1)
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df.dropna(subset=["pct_change", "Mov"], inplace=True)
     df.dropna(inplace=True)
