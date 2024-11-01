@@ -1,0 +1,7 @@
+names:
+- no_change
+- reversal
+nc: 2
+test: data\processed\SPY_dataset\test
+train: data\processed\SPY_dataset\train
+val: data\processed\SPY_dataset\val
