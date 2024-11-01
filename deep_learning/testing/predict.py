@@ -20,10 +20,11 @@ def predict(model_filename: str, dataframes: list[pd.DataFrame], device='cpu') -
     model.eval()
 
     outs = []
+    image_outs = []
     with torch.no_grad():
         for dataframe in dataframes:
             # Create image from dataframe
-            image = create_image(equity_df=dataframe, bond_df=None, currency_df=None,
+            image = create_image(data_frames=[dataframe],
                                  width=config["img_size"][0], height=config["img_size"][1],
                                  lookback=len(dataframe), rgb_channels=config["in_channels"])
 
@@ -40,7 +41,8 @@ def predict(model_filename: str, dataframes: list[pd.DataFrame], device='cpu') -
                 outputs = model(images)
                 _, predicted = torch.max(outputs, 1)
                 outs.append(predicted.item())
+                image_outs.append(image)
 
     # Dequantize the outputs
     outs = dequantize_labels(np.array(outs), config['output_size'])
-    return outs
+    return outs, image_outs

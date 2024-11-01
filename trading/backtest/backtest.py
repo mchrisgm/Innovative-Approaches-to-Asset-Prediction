@@ -3,6 +3,10 @@ from deep_learning import predict
 import pandas as pd
 import numpy as np
 import pytz
+
+from ultralytics import YOLO
+from PIL import Image
+
 from qstrader import settings
 from qstrader.alpha_model.fixed_signals import FixedSignalsAlphaModel
 from qstrader.asset.equity import Equity
@@ -27,6 +31,7 @@ class PredictiveAlphaModel(FixedSignalsAlphaModel):
         self.signals = pd.Series(0.0, index=data.index)
         super().__init__({self.asset: self.signals})
         self.current_position = 0  # 0 for no position, >0 for long, <0 for short
+        self.yolo_model = YOLO("./runs/SPY8/weights/best.pt", task="classify", verbose=False)
 
     def __call__(self, dt):
         print(f"Predicting for {dt}...")
@@ -40,7 +45,7 @@ class PredictiveAlphaModel(FixedSignalsAlphaModel):
         # Move Date index to a column
         historical_data.reset_index(inplace=True)
 
-        prediction = predict(self.model, [historical_data], device="cpu")
+        prediction, image = predict(self.model, [historical_data], device="cpu")
         print(f"Prediction for {dt}: {prediction}")
 
         # Ensure prediction is a single scalar value
@@ -50,19 +55,27 @@ class PredictiveAlphaModel(FixedSignalsAlphaModel):
         # Clip the prediction to ensure it's between -1 and 1
         prediction = np.clip(prediction, -1, 1)
 
+        image = image[0]
+        image = Image.fromarray(image)
+
+        yolo_prediction = self.yolo_model.predict(image, save=False)[0]
+        print(f"YOLO prediction for {dt}: {yolo_prediction.probs.top1}")
+        yolo_prediction = yolo_prediction.probs.top1
+
         # Implement the strategy
-        if prediction > 0:
-            if self.current_position <= 0:
-                self.current_position = prediction
-                return {self.asset: prediction}  # Go long
-        elif prediction < 0:
-            if self.current_position >= 0:
-                self.current_position = prediction
-                return {self.asset: prediction}  # Go short
-        else:  # signal == 0
-            if self.current_position != 0:
-                self.current_position = 0
-                return {self.asset: 0.0}  # Close position
+        if yolo_prediction == 0:
+            if prediction > 0:
+                if self.current_position <= 0:
+                    self.current_position = prediction
+                    return {self.asset: prediction}  # Go long
+            elif prediction < 0:
+                if self.current_position >= 0:
+                    self.current_position = prediction
+                    return {self.asset: prediction}  # Go short
+            else:  # signal == 0
+                if self.current_position != 0:
+                    self.current_position = 0
+                    return {self.asset: 0.0}  # Close position
 
         # If no action needed, return current position
         return {self.asset: float(self.current_position)}
